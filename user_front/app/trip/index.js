@@ -14,10 +14,11 @@ import TripRouteMap from '../../src/components/trip/TripRouteMap';
 import AddPlaceSubTab from '../../src/components/trip/AddPlaceSubTab';
 import ExpenseRow from '../../src/components/common/ExpenseRow';
 import Card from '../../src/components/common/Card';
+import TransferRow from '../../src/components/common/TransferRow';
 import ExpenseAddModal from '../../src/components/modals/ExpenseAddModal';
 import TransferAddModal from '../../src/components/modals/TransferAddModal';
 import FriendInviteModal from '../../src/components/modals/FriendInviteModal';
-import TripManageModal from '../../src/components/modals/TripManageModal';
+import TripManageModal from '../../src/components/modals/TripManageModal';  
 import MemberManageModal from '../../src/components/modals/MemberManageModal';
 import RouteShareModal from '../../src/components/modals/RouteShareModal';
 
