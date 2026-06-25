@@ -11,6 +11,7 @@ import {
   fetchActiveTrip,
   fetchExpenses as apiFetchExpenses,
   createExpense as apiCreateExpense,
+  createTransfer as apiCreateTransfer,
 } from '../api/tripApi';
 
 const TripContext = createContext(null);
@@ -21,6 +22,7 @@ export function TripProvider({ children }) {
   const [savedTrips, setSavedTrips] = useState([]);
   const [members, setMembers] = useState(MEMBERS);
   const [expenses, setExpenses] = useState(MOCK_EXPENSES);
+  const [transfers, setTransfers] = useState([]);
   const [tripLog, setTripLog] = useState(MOCK_TRIP_LOG);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   const [settleStatus, setSettleStatus] = useState({ m1: 'done', m2: 'requested', m3: 'requested', m4: 'pending' });
@@ -103,6 +105,23 @@ export function TripProvider({ children }) {
     setPastTrips((prev) => prev.filter((t) => t.id !== trip.id));
   }, []);
 
+  const addTransfer = useCallback(
+    async (transfer) => {
+      const localTransfer = { id: `tr${Date.now()}`, createdAt: new Date().toISOString(), ...transfer };
+      setTransfers((prev) => [localTransfer, ...prev]);
+      try {
+        const saved = await apiCreateTransfer(activeTrip?.id, transfer);
+        if (saved?.id) {
+          setTransfers((prev) => prev.map((t) => (t.id === localTransfer.id ? saved : t)));
+        }
+      } catch (e) {
+        console.warn('[trip] addTransfer 서버 저장 실패 (로컬에는 반영됨):', e?.message);
+      }
+      return localTransfer;
+    },
+    [activeTrip]
+  );
+
   const value = useMemo(
     () => ({
       activeTrip,
@@ -110,6 +129,7 @@ export function TripProvider({ children }) {
       savedTrips,
       members,
       expenses,
+      transfers,
       tripLog,
       notifications,
       settleStatus,
@@ -121,6 +141,7 @@ export function TripProvider({ children }) {
       setGpsEnabled,
       setGpsLocationLabel,
       addExpense,
+      addTransfer,
       addPlaceToLog,
       nudgeMember,
       confirmMemberSettle,
@@ -138,6 +159,7 @@ export function TripProvider({ children }) {
       savedTrips,
       members,
       expenses,
+      transfers, 
       tripLog,
       notifications,
       settleStatus,
@@ -147,6 +169,7 @@ export function TripProvider({ children }) {
       gpsEnabled,
       gpsLocationLabel,
       addExpense,
+      addTransfer,
       addPlaceToLog,
       nudgeMember,
       confirmMemberSettle,

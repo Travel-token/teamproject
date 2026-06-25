@@ -21,6 +21,14 @@ export const MEMBERS = [
   { id: 'm4', name: '최수연', short: '최수', color: 'tc', paid: 34000 },
 ];
 
+
+
+export const AI_FEED_SUGGESTIONS = [
+  { id: 'sugg1', placeId: 'p1', caption: '경주 봄 여행 마무리 🌸 불국사에서 시작해서 황리단길 카페까지...' },
+  { id: 'sugg2', placeId: 'p5', caption: '황리단길 맛집 투어 완료 ✅ 교동쌈밥, 황남빵, 카페거리까지...' },
+  { id: 'sugg3', placeId: 'p3', caption: '첨성대 야경 보러 갔다가 경주 전체를 도장깨기 한 느낌 😆...' },
+];
+
 export const ACTIVE_TRIP = {
   id: 't1',
   name: '경주 봄 여행',

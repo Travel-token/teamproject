@@ -5,6 +5,20 @@ import { apiClient } from './client';
 // Spring Boot 컨트롤러 예상 경로: /api/feed/**, /api/places/**
 // ============================================================
 
+
+/**
+ * POST /api/trips/{tripId}/feed/ai-suggest
+ * 정산 완료 후, 해당 여행의 지출/방문 장소 데이터를 기반으로
+ * AI가 피드 캡션(+ 추천 장소)을 생성해줍니다.
+ * response: { placeId, placeName, suggestions: [{ caption }] }
+ */
+export async function fetchAIFeedSuggestion(tripId) {
+  const { data } = await apiClient.post(`/trips/${tripId}/feed/ai-suggest`);
+  return data;
+}
+
+
+
 /**
  * GET /api/feed?sort=near|popular|recent&lat=&lng=
  * 정렬 기준과 GPS 좌표를 함께 전달합니다.

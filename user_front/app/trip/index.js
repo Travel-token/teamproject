@@ -12,10 +12,10 @@ import Avatar from '../../src/components/common/Avatar';
 import TripLogRow from '../../src/components/trip/TripLogRow';
 import TripRouteMap from '../../src/components/trip/TripRouteMap';
 import AddPlaceSubTab from '../../src/components/trip/AddPlaceSubTab';
-import TransferSubTab from '../../src/components/trip/TransferSubTab';
 import ExpenseRow from '../../src/components/common/ExpenseRow';
 import Card from '../../src/components/common/Card';
 import ExpenseAddModal from '../../src/components/modals/ExpenseAddModal';
+import TransferAddModal from '../../src/components/modals/TransferAddModal';
 import FriendInviteModal from '../../src/components/modals/FriendInviteModal';
 import TripManageModal from '../../src/components/modals/TripManageModal';
 import MemberManageModal from '../../src/components/modals/MemberManageModal';
@@ -35,8 +35,7 @@ const SUB_TABS = [
 
 export default function TripDetailScreen() {
   const router = useRouter();
-  const { activeTrip, members, tripLog, expenses } = useTrip();
-
+  const { activeTrip, members, tripLog, expenses, transfers } = useTrip();
   const [mainTab, setMainTab] = useState('exp');
   const [subTab, setSubTab] = useState('spend');
   const [expenseModalVisible, setExpenseModalVisible] = useState(false);
@@ -44,6 +43,7 @@ export default function TripDetailScreen() {
   const [manageVisible, setManageVisible] = useState(false);
   const [kickVisible, setKickVisible] = useState(false);
   const [routeShareVisible, setRouteShareVisible] = useState(false);
+  const [transferModalVisible, setTransferModalVisible] = useState(false); // 추가
 
   if (!activeTrip) {
     return (
@@ -69,6 +69,7 @@ export default function TripDetailScreen() {
               <Ionicons name="person-add-outline" size={14} color={colors.textPrimary} />
               <Text style={styles.headerBtnText}>초대</Text>
             </Pressable>
+
             <Pressable style={styles.headerIconBtn} onPress={() => setManageVisible(true)}>
               <Ionicons name="settings-outline" size={15} color={colors.textPrimary} />
             </Pressable>
@@ -138,7 +139,37 @@ export default function TripDetailScreen() {
               )}
 
               {subTab === 'place' && <AddPlaceSubTab onDone={() => setSubTab('spend')} />}
-              {subTab === 'transfer' && <TransferSubTab onDone={() => setSubTab('spend')} />}
+              {subTab === 'transfer' && (
+                <View>
+                  <View style={styles.dateRow}>
+                    <Text style={styles.dateLabel}>송금 내역 {transfers.length}건</Text>
+                    <Pressable style={styles.smallAddBtn} onPress={() => setTransferModalVisible(true)}>
+                      <Ionicons name="add" size={11} color={colors.textPrimary} />
+                      <Text style={styles.smallAddText}>송금 추가</Text>
+                    </Pressable>
+                  </View>
+
+                  {transfers.length === 0 ? (
+                    <View style={styles.transferEmpty}>
+                      <Text style={styles.transferEmptyText}>아직 기록된 송금이 없어요</Text>
+                    </View>
+                  ) : (
+                    <Card noPadding style={{ padding: spacing.lg }}>
+                      {transfers.map((t, i) => (
+                        <TransferRow key={t.id} transfer={t} isLast={i === transfers.length - 1} />
+                      ))}
+                    </Card>
+                  )}
+
+                  <AppButton
+                    variant="outline"
+                    title="송금 기록 추가하기"
+                    icon={<Ionicons name="swap-horizontal-outline" size={15} color={colors.tp} />}
+                    onPress={() => setTransferModalVisible(true)}
+                    style={{ marginTop: spacing.md }}
+                  />
+                </View>
+              )}
             </View>
           )}
 
@@ -173,7 +204,9 @@ export default function TripDetailScreen() {
       />
       <MemberManageModal visible={kickVisible} onClose={() => setKickVisible(false)} members={members} />
       <RouteShareModal visible={routeShareVisible} onClose={() => setRouteShareVisible(false)} trip={activeTrip} />
+      <TransferAddModal visible={transferModalVisible} onClose={() => setTransferModalVisible(false)} />
     </SafeAreaView>
+    
   );
 }
 
@@ -210,4 +243,9 @@ const styles = StyleSheet.create({
   smallAddText: { fontSize: fontSize.base, color: colors.textPrimary, fontWeight: '500' },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   emptyText: { fontSize: fontSize.lg, color: colors.textSecondary },
+  transferEmpty: {
+  paddingVertical: 36, alignItems: 'center', backgroundColor: colors.bgSecondary,
+  borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.borderTertiary, borderStyle: 'dashed',
+  },
+  transferEmptyText: { fontSize: fontSize.md, color: colors.textTertiary },
 });
