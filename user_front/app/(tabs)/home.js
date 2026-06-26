@@ -88,7 +88,7 @@ export default function HomeScreen() {
           </Card>
         </View>
 
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionLabel}>최근 지출</Text>
             <Pressable onPress={() => router.push('/trip/expenses')}>
@@ -100,7 +100,7 @@ export default function HomeScreen() {
               <ExpenseRow key={e.id} expense={e} isLast={i === recentExpenses.length - 1} />
             ))}
           </Card>
-        </View>
+        </View> */}
         
       </ScrollView>
 

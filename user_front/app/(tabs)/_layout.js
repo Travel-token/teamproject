@@ -1,83 +1,101 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fontSize } from '../../src/constants/theme';
-
-// 원본: 가운데 '메인홈' 탭은 떠 있는(floating) 원형 보라색 버튼으로 강조됨
-function HomeTabIcon({ focused }) {
-  return (
-    <View style={styles.homeFab}>
-      <Ionicons name="home" size={22} color={colors.white} />
-    </View>
-  );
-}
+import { BlurView } from 'expo-blur';
+import { colors } from '../../src/constants/theme';
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.tp,
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarActiveTintColor: colors.black,
+        tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: styles.tabBar,
-        tabBarLabelStyle: styles.label,
+        tabBarShowLabel: false, 
+        tabBarIconStyle: styles.iconStyle,
+        tabBarBackground: () => (
+          <BlurView 
+            tint="light" 
+            intensity={70} 
+            style={StyleSheet.absoluteFill} 
+          />
+        ),
       }}
     >
       <Tabs.Screen
         name="explore"
         options={{
-          title: '피드',
-          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={20} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="grid-outline" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="home"
         options={{
-          title: '',
-          tabBarIcon: ({ focused }) => <HomeTabIcon focused={focused} />,
-          tabBarLabel: () => <Text style={styles.homeLabel}>메인홈</Text>,
+          tabBarIcon: ({ focused }) => (
+            <View style={[styles.homeButton, focused ? styles.homeActive : styles.homeInactive]}>
+              <Ionicons name="home" size={22} color={focused ? colors.black : colors.textTertiary} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="trips"
         options={{
-          title: '여행기록',
-          tabBarIcon: ({ color, size }) => <Ionicons name="map-outline" size={20} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="map-outline" size={22} color={color} />,
         }}
       />
-      {/* 프로필은 탭바에 노출하지 않고 홈 화면 우상단 아이콘으로만 진입 (원본 동작과 동일) */}
-      <Tabs.Screen name="profile" options={{ href: null }} />
+
+      <Tabs.Screen 
+        name="profile" 
+        options={{ href: null }} 
+      />
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 78,
-    paddingBottom: 12,
-    paddingTop: 4,
-    borderTopWidth: 0.5,
-    borderTopColor: colors.borderTertiary,
-    backgroundColor: colors.bgPrimary,
-  },
-  label: { fontSize: fontSize.sm },
-  homeFab: {
     position: 'absolute',
-    top: -18,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.tp,
+    left: 50,
+    right: 50,
+    bottom: 28,
+    
+    // 1. 요청하신 67 높이 지정
+    height: 67, 
+    // 2. 완벽한 라운드 캡슐 형태를 유지하여 양 끝 깨짐을 방지 (67 / 2 = 33.5)
+    borderRadius: 33.5, 
+    
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+    
+    // 3. 안드로이드 기기에서 BlurView 내부가 바깥으로 터져서 사각형으로 깨지는 버그 차단
+    overflow: 'hidden', 
+  },
+  iconStyle: {
+    // 4. 높이가 커져도 세 개 아이콘의 중심축이 완벽히 수직 중앙에 일치하도록 고정
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: colors.bgPrimary,
-    shadowColor: colors.tp,
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    height: '100%',
   },
-  homeLabel: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 20 },
+  homeButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  homeActive: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)', 
+  },
+  homeInactive: {
+    backgroundColor: 'transparent',
+  },
 });

@@ -2,25 +2,28 @@
 // Travel Token 디자인 토큰
 // 원본 HTML(:root CSS 변수)을 그대로 옮긴 컬러 시스템입니다.
 // ============================================================
+// ============================================================
+// Travel Token 디자인 토큰 — 블랙/화이트 미니멀 시스템
+// ============================================================
 
 export const colors = {
-  // Brand colors (pill/포인트 컬러 세트: p=purple, t=teal, c=coral, a=amber, b=blue)
-  tp: '#7F77DD',
-  tpLight: '#EEEDFE',
-  tpMid: '#534AB7',
+  // Brand — 모노크롬
+  tp: '#1C1C1E',      
+  tpLight: '#F2F2F7',  
+  tpMid: '#3A3A3C',    
 
-  tt: '#1D9E75',
-  ttLight: '#E1F5EE',
-  ttMid: '#0F6E56',
+  tt: '#3A3A3C',   
+  ttLight: '#F2F2F7',
+  ttMid: '#1C1C1E',
 
-  tc: '#D85A30',
-  tcLight: '#FAECE7',
+  tc: '#636366',     
+  tcLight: '#F2F2F7',
 
-  ta: '#BA7517',
-  taLight: '#FAEEDA',
+  ta: '#8E8E93',      
+  taLight: '#F2F2F7',
 
-  tb: '#378ADD',
-  tbLight: '#E6F1FB',
+  tb: '#3A3A3C',    
+  tbLight: '#F2F2F7',
 
   // Background
   bgPrimary: '#FFFFFF',
@@ -43,7 +46,7 @@ export const colors = {
   kakaoBrown: '#3C1E1E',
 };
 
-// 다크모드 팔레트 (toggleDark 로직 대응)
+// 다크모드 팔레트
 export const darkColors = {
   ...colors,
   bgPrimary: '#1C1C1E',
@@ -99,9 +102,9 @@ export const shadow = {
     elevation: 2,
   },
   fab: {
-    shadowColor: colors.tp,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.18,
     shadowRadius: 20,
     elevation: 6,
   },
@@ -114,15 +117,13 @@ export const shadow = {
   },
 };
 
-// 카테고리별 색상/이모지 매핑 (지출 카테고리 공통 사용)
 export const CATEGORY_META = {
-  meal: { label: '식사', emoji: '🍜', color: colors.tp, bg: colors.tpLight },
-  ticket: { label: '입장', emoji: '🎫', color: colors.tt, bg: colors.ttLight },
-  cafe: { label: '카페', emoji: '☕', color: colors.ta, bg: colors.taLight },
-  shop: { label: '쇼핑', emoji: '🛒', color: colors.tc, bg: colors.tcLight },
-  trans: { label: '교통', emoji: '🚗', color: colors.tb, bg: colors.tbLight },
-  etc: { label: '기타', emoji: '📦', color: colors.textSecondary, bg: colors.bgSecondary },
+  meal:   { label: '식사', emoji: '🍜', color: colors.tp,           bg: colors.tpLight },
+  ticket: { label: '입장', emoji: '🎫', color: colors.tt,           bg: colors.ttLight },
+  cafe:   { label: '카페', emoji: '☕', color: colors.ta,           bg: colors.taLight },
+  shop:   { label: '쇼핑', emoji: '🛒', color: colors.tc,           bg: colors.tcLight },
+  trans:  { label: '교통', emoji: '🚗', color: colors.tb,           bg: colors.tbLight },
+  etc:    { label: '기타', emoji: '📦', color: colors.textSecondary, bg: colors.bgSecondary },
 };
 
-// 멤버 아바타 색상 팔레트 (m1~m4 순환)
 export const MEMBER_COLOR_KEYS = ['tp', 'tt', 'ta', 'tc'];

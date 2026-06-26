@@ -12,12 +12,12 @@ import AppButton from '../../src/components/common/AppButton';
 import ToggleRow from '../../src/components/common/ToggleRow';
 import Avatar from '../../src/components/common/Avatar';
 
-const PROFILE_STATS = [
-  { label: '여행 횟수', value: '3회' },
-  { label: '총 여행 일수', value: '12일' },
-  { label: '방문 장소', value: '23곳' },
-  { label: '총 지출', value: '₩1.4M' },
-];
+// const PROFILE_STATS = [
+//   { label: '여행 횟수', value: '3회' },
+//   { label: '총 여행 일수', value: '12일' },
+//   { label: '방문 장소', value: '23곳' },
+//   { label: '총 지출', value: '₩1.4M' },
+// ];
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -126,11 +126,11 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        <View style={styles.statsGrid}>
+        {/* <View style={styles.statsGrid}>
           {PROFILE_STATS.map((s) => (
             <StatBox key={s.label} label={s.label} value={s.value} style={styles.statGridItem} valueStyle={{ fontSize: fontSize.xl }} />
           ))}
-        </View>
+        </View> */}
 
         {/* 정산 받을 계좌 */}
         <View style={styles.accountBox}>

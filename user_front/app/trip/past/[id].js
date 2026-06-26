@@ -20,7 +20,9 @@ export default function PastTripDetailScreen() {
   const trip = PAST_TRIPS.find((t) => t.id === id) || PAST_TRIPS[0];
 
   return (
+    
     <SafeAreaView style={styles.safe} edges={['top']}>
+      
       <TopBar title={trip.name} showBack onBack={() => router.back()} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
