@@ -15,37 +15,51 @@ import com.example.demo.dto.Trip_RequestDto;
 import com.example.demo.dto.Trip_ResponseDto;
 import com.example.demo.service.Trip_service;
 
+// ============================================================
+// Trip_controller : 주문받는 카운터
+// 창구 목록:
+//   POST /api/trips         → 여행방 만들기        (f 단계)
+//   GET  /api/trips         → 전체 목록            (f 단계)
+//   GET  /api/trips/active  → 진행중 여행 1건 [NEW] (g 단계)
+//        └ 프론트 TripContext가 앱 시작 때 부르는 바로 그 주소!
+// ============================================================
 @RestController
 @RequestMapping("/api/trips")
 public class Trip_controller {
 
     private final Trip_service tripService;
 
-    // 생성자 주입: Spring이 요리사(Trip_serviceImpl)를 데려와 연결
     public Trip_controller(Trip_service tripService) {
         this.tripService = tripService;
     }
 
     // ---------- 여행방 만들기 : POST /api/trips ----------
-    // @RequestBody : 프론트가 보낸 JSON 소포를 Trip_RequestDto 상자에 자동으로 담아줘
     @PostMapping
     public ResponseEntity<?> createTrip(@RequestBody Trip_RequestDto request) {
         try {
             Trip_ResponseDto created = tripService.createTrip(request);
-            // 201 Created = "새로 만들었어요" 라는 HTTP 정식 표현
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
-            // 요리사(문지기)가 거절한 경우
-            // 400 Bad Request = "당신이 보낸 내용에 문제가 있어요"
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
     // ---------- 여행방 전체 목록 : GET /api/trips ----------
-    // 브라우저에서 http://localhost:8080/api/trips 를 열어
-    // 저장이 잘 되는지 눈으로 확인하는 용도로도 씁니다.
     @GetMapping
     public ResponseEntity<List<Trip_ResponseDto>> getAllTrips() {
         return ResponseEntity.ok(tripService.getAllTrips());
+    }
+
+    // ---------- [NEW] 진행중 여행 1건 : GET /api/trips/active ----------
+    @GetMapping("/active")
+    public ResponseEntity<Trip_ResponseDto> getActiveTrip() {
+        Trip_ResponseDto active = tripService.getActiveTrip();
+        if (active == null) {
+            // 진행중 여행 없음 → 204 No Content
+            // = "요청은 잘 처리했는데, 돌려줄 내용물이 없어요"라는 HTTP 정식 표현.
+            //   404(주소가 틀림)와는 다른, 정중한 '빈손' 답변이에요.
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(active);
     }
 }

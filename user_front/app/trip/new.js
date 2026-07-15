@@ -14,6 +14,7 @@ import RangeCalendar from '../../src/components/trip/RangeCalendar';
 import Avatar from '../../src/components/common/Avatar';
 import { useTrip } from '../../src/context/TripContext';
 import { useToast } from '../../src/context/ToastContext';
+import { createTrip } from '../../src/api/tripApi';
 
 const TRIP_EMOJIS = ['✈️', '🏖️', '🏔️', '🌸', '🎒', '🚗'];
 
@@ -40,30 +41,58 @@ export default function NewTripScreen() {
   const canGoStep3 = dateRange.startDate && dateRange.endDate;
 
   const handleCreate = () => {
-    const nights =
-      dateRange.startDate && dateRange.endDate
-        ? Math.round((new Date(dateRange.endDate) - new Date(dateRange.startDate)) / (1000 * 60 * 60 * 24))
-        : 0;
+    const handleCreate = async () => {
+      // async = "이 함수 안에 기다리는 일(서버 통신)이 있어요" 표시
+      const nights =
+          dateRange.startDate && dateRange.endDate
+              ? Math.round(
+                  (new Date(dateRange.endDate) - new Date(dateRange.startDate)) /
+                  (1000 * 60 * 60 * 24)
+              )
+              : 0;
 
-    setActiveTrip({
-      id: `t${Date.now()}`,
-      name: name.trim(),
-      emoji,
-      status: 'ongoing',
-      startDate: dateRange.startDate,
-      endDate: dateRange.endDate,
-      nights,
-      region: region || '미지정',
-      members: members.filter((m) => selectedMembers.includes(m.id)),
-      placesVisited: 0,
-      totalSpent: 0,
-      budget: Number(budget) || 0,
-      highlightPlaces: [],
-    });
+      // 서버 저장에 실패해도 화면은 동작하도록, 임시 ID를 먼저 준비
+      let savedId = `t${Date.now()}`;
 
-    toast.show(`${name.trim()} 여행이 시작됐어요! 🎉`);
-    router.replace('/trip');
-  };
+      try {
+        // await = 서버의 답장이 올 때까지 여기서 기다림
+        // 소포의 키 이름들은 백엔드 Trip_RequestDto의 변수명과 일치해야 함!
+        const saved = await createTrip({
+          name: name.trim(),
+          emoji,
+          region: region.trim() || '미지정',
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          budget: Number(budget) || 0,
+          currency,
+        });
+        // 서버가 발급해 준 진짜 방 번호로 교체
+        if (saved && saved.tripId) savedId = String(saved.tripId);
+      } catch (e) {
+        // 서버가 꺼져 있어도 앱이 멈추지 않게: 경고만 띄우고 로컬로 진행
+        console.warn('[trip] 서버 저장 실패, 로컬에만 저장합니다:', e?.message);
+        toast.show('서버 연결에 실패해 임시로 저장했어요 ⚠️');
+      }
+
+      setActiveTrip({
+        id: savedId,
+        name: name.trim(),
+        emoji,
+        status: 'ongoing',
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+        nights,
+        region: region || '미지정',
+        members: members.filter((m) => selectedMembers.includes(m.id)),
+        placesVisited: 0,
+        totalSpent: 0,
+        budget: Number(budget) || 0,
+        highlightPlaces: [],
+      });
+
+      toast.show(`${name.trim()} 여행이 시작됐어요! 🎉`);
+      router.replace('/trip');
+    };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -216,4 +245,4 @@ const styles = StyleSheet.create({
   },
   summaryTitle: { fontSize: fontSize.title, fontWeight: '700', color: colors.tpMid, marginBottom: 6 },
   summaryLine: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: 2 },
-});
+})};
