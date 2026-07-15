@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- User 기능 SQL 지시서 (담당: 박찬민) - 아직 비어 있음 -->
+<mapper namespace="com.example.demo.repository.User_repository">
+
+</mapper>
