@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.project.mapper.DashboardMapper">
+
+    <sql id="latestSettlementJoin">
+        LEFT JOIN (
+            SELECT s1.trip_id, s1.status AS settlement_status
+            FROM settlements s1
+            INNER JOIN (
+                SELECT trip_id, MAX(created_at) AS max_created
+                FROM settlements
+                GROUP BY trip_id
+            ) s2 ON s1.trip_id = s2.trip_id AND s1.created_at = s2.max_created
+        ) latest ON latest.trip_id = t.id
+    </sql>
+
+    <select id="countTotalUsers" resultType="long">
+        SELECT COUNT(*) FROM users WHERE status != 'withdrawn'
+    </select>
+
+    <select id="countActiveTrips" resultType="long">
+        SELECT COUNT(*)
+        FROM trips t
+        <include refid="latestSettlementJoin"/>
+        WHERE latest.settlement_status IS NULL
+    </select>
+
+    <select id="sumMonthlySettlementAmount" resultType="long">
+        SELECT COALESCE(SUM(total_amount), 0)
+        FROM settlements
+        WHERE YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE())
+    </select>
+
+    <select id="countNewUsersToday" resultType="long">
+        SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()
+    </select>
+
+    <!-- MySQL 8 재귀 CTE로 최근 N일 날짜 시퀀스를 만들고 가입자 수를 LEFT JOIN 집계 (가입자가 0명인 날짜도 0으로 표시) -->
+    <select id="selectSignupTrend" resultType="com.example.project.dto.dashboard.DashboardSummaryResponse$SignupTrendItem">
+        WITH RECURSIVE date_seq AS (
+            SELECT DATE_SUB(CURDATE(), INTERVAL (#{days} - 1) DAY) AS d
+            UNION ALL
+            SELECT DATE_ADD(d, INTERVAL 1 DAY) FROM date_seq WHERE d &lt; CURDATE()
+        )
+        SELECT DATE_FORMAT(ds.d, '%Y-%m-%d') AS date, COUNT(u.id) AS count
+        FROM date_seq ds
+        LEFT JOIN users u ON DATE(u.created_at) = ds.d AND u.status != 'withdrawn'
+        GROUP BY ds.d
+        ORDER BY ds.d
+    </select>
+
+    <select id="selectSettlementStatusCount" resultType="com.example.project.dto.dashboard.DashboardSummaryResponse$SettlementStatusCount">
+        SELECT
+            SUM(CASE WHEN latest.settlement_status IS NULL THEN 1 ELSE 0 END) AS live,
+            SUM(CASE WHEN latest.settlement_status = 'in_progress' THEN 1 ELSE 0 END) AS settle,
+            SUM(CASE WHEN latest.settlement_status = 'completed' THEN 1 ELSE 0 END) AS done
+        FROM trips t
+        <include refid="latestSettlementJoin"/>
+    </select>
+
+    <select id="selectRecentUsers" resultType="com.example.project.dto.dashboard.DashboardSummaryResponse$RecentUserItem">
+        SELECT
+            u.id AS id,
+            u.name AS name,
+            u.login_provider AS provider,
+            (SELECT COUNT(*) FROM trip_members tm WHERE tm.user_id = u.id) AS tripCount,
+            DATE_FORMAT(u.created_at, '%Y.%m.%d') AS joinedAt
+        FROM users u
+        WHERE u.status != 'withdrawn'
+        ORDER BY u.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectRecentTrips" resultType="com.example.project.dto.dashboard.DashboardSummaryResponse$RecentTripItem">
+        SELECT
+            t.id AS id,
+            t.name AS name,
+            (SELECT COUNT(*) FROM trip_members tm WHERE tm.trip_id = t.id) AS memberCount,
+            COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE e.trip_id = t.id), 0) AS totalAmount,
+            CASE
+                WHEN latest.settlement_status IS NULL THEN 'live'
+                WHEN latest.settlement_status = 'in_progress' THEN 'settle'
+                ELSE 'done'
+            END AS status
+        FROM trips t
+        <include refid="latestSettlementJoin"/>
+        ORDER BY t.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+
+
+    <select id="countTotalUsersAsOfLastMonth" resultType="long">
+    SELECT COUNT(*) FROM users
+    WHERE status != 'withdrawn'
+        AND created_at &lt; DATE_FORMAT(CURDATE(), '%Y-%m-01')
+    </select>
+
+    <select id="countTripsCreatedLastMonth" resultType="long">
+    SELECT COUNT(*) FROM trips
+    WHERE created_at >= DATE_SUB(DATE_FORMAT(CURDATE(),'%Y-%m-01'), INTERVAL 1 MONTH)
+        AND created_at &lt; DATE_FORMAT(CURDATE(), '%Y-%m-01')
+    </select>
+
+    <select id="countTripsCreatedThisMonth" resultType="long">
+    SELECT COUNT(*) FROM trips
+    WHERE created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+    </select>
+
+    <select id="sumSettlementAmountLastMonth" resultType="long">
+    SELECT COALESCE(SUM(total_amount), 0) FROM settlements
+    WHERE YEAR(created_at) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+        AND MONTH(created_at) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
+    </select>
+
+    <select id="countNewUsersYesterday" resultType="long">
+    SELECT COUNT(*) FROM users WHERE DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+    </select>
+
+</mapper>

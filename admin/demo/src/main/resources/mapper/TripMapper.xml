@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.project.mapper.TripMapper">
+
+    <!--
+      여행방의 "정산 상태"는 별도 컬럼이 아니라 settlements 테이블의 최신 레코드로 파생한다.
+        - 정산 레코드가 없음        -> live   (진행중, 아직 정산 시작 전)
+        - status = in_progress    -> settle (정산중)
+        - status = completed      -> done   (정산완료)
+    -->
+    <sql id="latestSettlementJoin">
+        LEFT JOIN (
+            SELECT s1.trip_id, s1.id AS settlement_id, s1.status AS settlement_status
+            FROM settlements s1
+            INNER JOIN (
+                SELECT trip_id, MAX(created_at) AS max_created
+                FROM settlements
+                GROUP BY trip_id
+            ) s2 ON s1.trip_id = s2.trip_id AND s1.created_at = s2.max_created
+        ) latest ON latest.trip_id = t.id
+    </sql>
+
+    <sql id="tripWhere">
+        <where>
+            <if test="cond.keyword != null and cond.keyword != ''">
+                AND t.name LIKE CONCAT('%', #{cond.keyword}, '%')
+            </if>
+            <if test="cond.status != null and cond.status != '' and cond.status != 'all'">
+                AND (
+                    (#{cond.status} = 'live'   AND latest.settlement_status IS NULL)
+                    OR (#{cond.status} = 'settle' AND latest.settlement_status = 'in_progress')
+                    OR (#{cond.status} = 'done'   AND latest.settlement_status = 'completed')
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectTripList" resultType="com.example.project.dto.trip.TripListItemResponse">
+        SELECT
+            t.id AS id,
+            t.name AS name,
+            (SELECT COUNT(*) FROM trip_members tm WHERE tm.trip_id = t.id) AS memberCount,
+            DATE_FORMAT(t.start_date, '%Y.%m.%d') AS startDate,
+            DATE_FORMAT(t.end_date, '%Y.%m.%d') AS endDate,
+            (DATEDIFF(t.end_date, t.start_date) + 1) AS tripDays,
+            COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE e.trip_id = t.id), 0) AS totalAmount,
+            CASE
+                WHEN latest.settlement_status IS NULL THEN 'live'
+                WHEN latest.settlement_status = 'in_progress' THEN 'settle'
+                ELSE 'done'
+            END AS status,
+            DATE_FORMAT(t.created_at, '%Y.%m.%d') AS createdAt
+        FROM trips t
+        <include refid="latestSettlementJoin"/>
+        <include refid="tripWhere"/>
+        ORDER BY t.created_at DESC
+        LIMIT #{cond.offset}, #{cond.limit}
+    </select>
+
+    <select id="countTripList" resultType="long">
+        SELECT COUNT(*)
+        FROM trips t
+        <include refid="latestSettlementJoin"/>
+        <include refid="tripWhere"/>
+    </select>
+
+    <select id="existsById" resultType="int">
+        SELECT COUNT(*) FROM trips WHERE id = #{id}
+    </select>
+
+    <select id="selectTripBasic" resultType="com.example.project.dto.trip.TripBasicRow">
+        SELECT
+            t.id AS id,
+            t.name AS name,
+            DATE_FORMAT(t.start_date, '%Y.%m.%d') AS startDate,
+            DATE_FORMAT(t.end_date, '%Y.%m.%d') AS endDate,
+            (DATEDIFF(t.end_date, t.start_date) + 1) AS tripDays,
+            DATE_FORMAT(t.created_at, '%Y.%m.%d') AS createdAt,
+            (SELECT COUNT(*) FROM trip_members tm WHERE tm.trip_id = t.id) AS memberCount,
+            COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE e.trip_id = t.id), 0) AS totalAmount,
+            CASE
+                WHEN latest.settlement_status IS NULL THEN 'live'
+                WHEN latest.settlement_status = 'in_progress' THEN 'settle'
+                ELSE 'done'
+            END AS status
+        FROM trips t
+        <include refid="latestSettlementJoin"/>
+        WHERE t.id = #{id}
+    </select>
+
+    <select id="selectCategoryAmounts" resultType="com.example.project.dto.trip.TripDetailResponse$CategoryAmount">
+        SELECT ec.label AS label, SUM(e.amount) AS amount
+        FROM expenses e
+        JOIN expense_categories ec ON ec.code = e.category_code
+        WHERE e.trip_id = #{id}
+        GROUP BY ec.code, ec.label, ec.sort_order
+        ORDER BY ec.sort_order
+    </select>
+
+    <select id="selectTripMembers" resultType="com.example.project.dto.trip.TripDetailResponse$TripMember">
+        SELECT
+            tm.id AS memberId,
+            tm.display_name AS name,
+            tm.short_name AS shortName,
+            sp.status AS settleStatus
+        FROM trip_members tm
+        LEFT JOIN (
+            SELECT s1.trip_id, s1.id AS settlement_id
+            FROM settlements s1
+            INNER JOIN (
+                SELECT trip_id, MAX(created_at) AS max_created
+                FROM settlements
+                GROUP BY trip_id
+            ) s2 ON s1.trip_id = s2.trip_id AND s1.created_at = s2.max_created
+        ) latest ON latest.trip_id = tm.trip_id
+        LEFT JOIN settlement_participants sp ON sp.settlement_id = latest.settlement_id AND sp.member_id = tm.id
+        WHERE tm.trip_id = #{id}
+        ORDER BY tm.joined_at
+    </select>
+
+    <delete id="deleteTrip">
+        DELETE FROM trips WHERE id = #{id}
+    </delete>
+
+</mapper>
