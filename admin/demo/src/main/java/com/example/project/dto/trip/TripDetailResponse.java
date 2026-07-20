@@ -25,7 +25,7 @@ public class TripDetailResponse {
 
     @Getter @Setter @NoArgsConstructor
     public static class CategoryAmount {
-        private String label;   // 예: "🍜 식사"
+        private String label; 
         private long amount;
     }
 
