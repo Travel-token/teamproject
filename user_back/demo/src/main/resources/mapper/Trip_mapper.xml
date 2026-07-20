@@ -42,4 +42,40 @@
             LIMIT 1
     </select>
 
+    <!-- [h] 여행 삭제 -->
+    <delete id="deleteTrip" parameterType="long">
+        DELETE FROM trip
+        WHERE trip_id = #{trip_id}
+    </delete>
+    <!-- [h] 여행 수정. -->
+    <update id="updateTrip" parameterType="com.example.demo.vo.Trip_vo">
+        UPDATE trip
+        SET name = #{name},
+            emoji = #{emoji},
+            region = #{region},
+            start_date = #{start_date},
+            end_date = #{end_date},
+            budget = #{budget},
+            currency = #{currency}
+        WHERE trip_id = #{trip_id}
+    </update>
+
+    <!-- [h-6] 상태만 바꾸기 (ongoing → ended / saved 등)
+         #{trip_id}, #{status} 는 @Param 으로 붙인 이름표에서 꺼내옴 -->
+    <update id="updateStatus">
+        UPDATE trip
+        SET status = #{status}
+        WHERE trip_id = #{trip_id}
+    </update>
+
+    <!-- [g 잔여] 특정 상태의 여행 목록 (지난 여행 = ended, 보관함 = saved) -->
+    <select id="findByStatus" parameterType="string"
+            resultType="com.example.demo.vo.Trip_vo">
+        SELECT trip_id, name, emoji, region, start_date, end_date,
+               budget, currency, status, created_at
+        FROM trip
+        WHERE status = #{status}
+        ORDER BY created_at DESC
+    </select>
+
 </mapper>

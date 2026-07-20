@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- ============================================================
+  Place_mapper.xml : 장소 창고지기의 SQL 지시서 (k 단계)
+============================================================ -->
+<mapper namespace="com.example.demo.repository.Place_repository">
+
+    <insert id="insertPlace" parameterType="com.example.demo.vo.Place_vo"
+            useGeneratedKeys="true" keyProperty="place_id">
+        INSERT INTO place (trip_id, name, visit_time, memo)
+        VALUES (#{trip_id}, #{name}, #{visit_time}, #{memo})
+    </insert>
+
+    <!-- 동선은 시간 흐름이 중요하니 "기록된 순서(오름차순 ASC)"로 -->
+    <select id="findByTripId" parameterType="long"
+            resultType="com.example.demo.vo.Place_vo">
+        SELECT place_id, trip_id, name, visit_time, memo, created_at
+        FROM place
+        WHERE trip_id = #{trip_id}
+        ORDER BY created_at ASC
+    </select>
+
+    <delete id="deletePlace" parameterType="long">
+        DELETE FROM place
+        WHERE place_id = #{place_id}
+    </delete>
+
+</mapper>
