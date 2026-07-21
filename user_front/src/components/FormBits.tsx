@@ -52,7 +52,10 @@ export function SubmitButton({ label, onPress, disabled }: { label: string; onPr
 export function CancelButton({ label = '취소', onPress }: { label?: string; onPress?: () => void }) {
   const { colors } = useTheme();
   return (
-    <Pressable onPress={onPress} style={[styles.cancelBtn, { backgroundColor: colors.bgCancel }]}>
+    <Pressable
+      onPress={onPress}
+      style={[styles.cancelBtn, { backgroundColor: colors.bgCancel, borderColor: colors.bdInput }]}
+    >
       <Text style={[styles.cancelLabel, { color: colors.txCancel }]}>{label}</Text>
     </Pressable>
   );
@@ -105,6 +108,7 @@ export function SegmentChip({
         styles.segChip,
         {
           backgroundColor: active ? colors.bgChipActive : colors.bgCard2,
+          borderColor: active ? colors.bgChipActive : colors.bdCard,
         },
       ]}
     >
@@ -129,6 +133,11 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 6,
+    shadowColor: '#1A6DC4',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 4,
   },
   submitLabel: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   cancelBtn: {
@@ -136,6 +145,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 8,
+    borderWidth: 1,
   },
   cancelLabel: { fontSize: 14, fontWeight: '600' },
   chip: {
@@ -150,6 +160,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
+    borderWidth: 1,
     alignItems: 'center',
     marginRight: 8,
   },

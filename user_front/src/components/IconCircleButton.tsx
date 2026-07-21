@@ -5,12 +5,13 @@ import { useTheme } from '../theme/ThemeContext';
 
 interface Props {
   icon: React.ComponentProps<typeof FontAwesome6>['name'];
+  iconStyle?: React.ComponentProps<typeof FontAwesome6>['iconStyle'];
   onPress?: () => void;
   showDot?: boolean;
   size?: number;
 }
 
-export default function IconCircleButton({ icon, onPress, showDot, size = 34 }: Props) {
+export default function IconCircleButton({ icon, iconStyle = 'solid', onPress, showDot, size = 34 }: Props) {
   const { colors } = useTheme();
   return (
     <Pressable
@@ -26,7 +27,7 @@ export default function IconCircleButton({ icon, onPress, showDot, size = 34 }: 
         },
       ]}
     >
-      <FontAwesome6 name={icon} size={size * 0.42} color={colors.txSecondary} />
+      <FontAwesome6 name={icon} iconStyle={iconStyle} size={size * 0.42} color={colors.txSecondary} />
       {showDot && <View style={[styles.dot, { backgroundColor: colors.bgDel }]} />}
     </Pressable>
   );
@@ -36,7 +37,12 @@ const styles = StyleSheet.create({
   btn: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   dot: {
     position: 'absolute',

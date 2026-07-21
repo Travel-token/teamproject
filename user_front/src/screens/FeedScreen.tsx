@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '../components/Avatar';
 import IconCircleButton from '../components/IconCircleButton';
 import { feedPosts } from '../data/mockData';
@@ -30,6 +31,7 @@ type Props = CompositeScreenProps<
 
 export default function FeedScreen({ navigation }: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('popular');
 
@@ -45,7 +47,7 @@ export default function FeedScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <Text style={[styles.pageTitle, { color: colors.txPrimary }]}>피드</Text>
         <View style={styles.topRight}>
           <IconCircleButton icon="bell" showDot />

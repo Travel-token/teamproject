@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '../components/Avatar';
 import { useTheme } from '../theme/ThemeContext';
 import { RootStackParamList } from '../navigation/types';
@@ -30,6 +31,7 @@ const INITIAL_COMMENTS: Comment[] = [
 export default function FeedDetailScreen({ route, navigation }: Props) {
   const { post } = route.params;
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [comments, setComments] = useState(INITIAL_COMMENTS);
@@ -48,7 +50,7 @@ export default function FeedDetailScreen({ route, navigation }: Props) {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <FontAwesome6 name="chevron-left" size={16} color={colors.txPrimary} />
         </Pressable>

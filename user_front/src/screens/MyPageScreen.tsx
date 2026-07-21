@@ -2,12 +2,13 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState,useEffect } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '../components/Avatar';
 import BottomSheetModal from '../components/BottomSheetModal';
 import FeedFormModal, { FeedFormValue } from '../components/FeedFormModal';
-import { CancelButton, SubmitButton } from '../components/FormBits';
+import { CancelButton, SubmitButton, FormInput, FormRow } from '../components/FormBits';
 import ToggleSwitch from '../components/ToggleSwitch';
 import { useToast } from '../components/Toast';
 import { formatWon, historyTrips } from '../data/mockData';
@@ -40,10 +41,10 @@ type TopTab = 'history' | 'mypage';
 export default function MyPageScreen({ navigation }: Props) {
   const { colors, isDark, setMode } = useTheme();
   const [topTab, setTopTab] = useState<TopTab>('mypage');
-
+  const insets = useSafeAreaInsets();
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <Text style={[styles.pageTitle, { color: colors.txPrimary }]}>MY</Text>
       </View>
 
@@ -95,6 +96,9 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
   const [feedFormVisible, setFeedFormVisible] = useState(false);
   const [feedFormMode, setFeedFormMode] = useState<'create' | 'edit'>('create');
   const [editingFeedId, setEditingFeedId] = useState<string | null>(null);
+  const [accountBank, setAccountBank] = useState('카카오뱅크');
+  const [accountNumber, setAccountNumber] = useState('3333-04-1234567');
+  const [accountEditVisible, setAccountEditVisible] = useState(false);
   const { showToast } = useToast();
 
   const totalLikes = myFeeds.reduce((sum, f) => sum + f.likes, 0);
@@ -171,9 +175,14 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
       >
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 10, color: colors.txMuted, marginBottom: 4 }}>송금 계좌번호</Text>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.txPrimary }}>카카오뱅크 3333-04-1234567</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.txPrimary }}>
+            {accountBank} {accountNumber}
+          </Text>
         </View>
-        <Pressable onPress={() => Alert.alert('계좌 수정')} style={[styles.editBtn, { backgroundColor: colors.bgCard2 }]}>
+        <Pressable
+          onPress={() => setAccountEditVisible(true)}
+          style={[styles.editBtn, { backgroundColor: colors.bgCard2 }]}
+        >
           <FontAwesome6 name="pen" size={11} color={colors.txSecondary} />
         </Pressable>
       </Pressable>
@@ -224,9 +233,70 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
       initialValue={editingFeed ? { place: editingFeed.place, caption: editingFeed.caption, emoji: editingFeed.emoji } : undefined}
       onSubmit={submitFeed}
     />
+
+    <AccountEditModal
+      visible={accountEditVisible}
+      onClose={() => setAccountEditVisible(false)}
+      bank={accountBank}
+      number={accountNumber}
+      onSave={(bank, number) => {
+        setAccountBank(bank);
+        setAccountNumber(number);
+        setAccountEditVisible(false);
+        showToast('💳 계좌번호가 수정됐어요');
+      }}
+    />
+    
     </>
   );
 }
+
+
+  function AccountEditModal({
+    visible,
+    onClose,
+    bank,
+    number,
+    onSave,
+  }: {
+    visible: boolean;
+    onClose: () => void;
+    bank: string;
+    number: string;
+    onSave: (bank: string, number: string) => void;
+  }) {
+    const [bankDraft, setBankDraft] = useState(bank);
+    const [numberDraft, setNumberDraft] = useState(number);
+
+    useEffect(() => {
+      if (visible) {
+        setBankDraft(bank);
+        setNumberDraft(number);
+      }
+    }, [visible, bank, number]);
+
+    return (
+      <BottomSheetModal visible={visible} onClose={onClose} title="계좌번호 수정">
+        <FormRow label="은행">
+          <FormInput value={bankDraft} onChangeText={setBankDraft} placeholder="예: 카카오뱅크" />
+        </FormRow>
+        <FormRow label="계좌번호">
+          <FormInput
+            value={numberDraft}
+            onChangeText={setNumberDraft}
+            placeholder="예: 3333-04-1234567"
+            keyboardType="numbers-and-punctuation"
+          />
+        </FormRow>
+        <SubmitButton
+          label="저장하기"
+          disabled={!bankDraft.trim() || !numberDraft.trim()}
+          onPress={() => onSave(bankDraft.trim(), numberDraft.trim())}
+        />
+        <CancelButton onPress={onClose} />
+      </BottomSheetModal>
+    );
+  }
 
 function MyFeedModal({
   visible,
@@ -338,51 +408,92 @@ function SettingRowValue({
 }
 
 function HistoryPanel({ onTripPress }: { onTripPress: (id: string) => void }) {
-  const { colors } = useTheme();
-  const pinned = historyTrips.filter((t) => !t.hidden);
-  const hidden = historyTrips.filter((t) => t.hidden);
-  const [showHidden, setShowHidden] = useState(false);
+    const { colors } = useTheme();
+    const [showHidden, setShowHidden] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
-  return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={[styles.statCard, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
-        <StatCell value="12" label="여행 횟수" />
-        <StatCell value="48" label="총 여행일수" />
-        <StatCell value="28" label="방문 장소" />
-        <StatCell value="3.2만" label="총 지출액" last />
-      </View>
+    const q = searchQuery.trim();
+    const filteredTrips = q ? historyTrips.filter((t) => t.name.includes(q)) : historyTrips;
+    const pinned = filteredTrips.filter((t) => !t.hidden);
+    const hidden = filteredTrips.filter((t) => t.hidden);
 
-      <View style={styles.histHd}>
-        <Text style={[styles.groupLabelBig, { color: colors.txPrimary }]}>내 여행</Text>
-        <Text style={{ fontSize: 12, color: colors.txMuted }}>{pinned.length}개</Text>
-      </View>
+    const toggleSearch = () => {
+      setSearchOpen((prev) => {
+        if (prev) setSearchQuery('');
+        return !prev;
+      });
+    };
 
-      <View style={{ paddingHorizontal: 20, gap: 8 }}>
-        {pinned.map((t) => (
-          <HistoryCard key={t.id} trip={t} onPress={() => onTripPress(t.id)} />
-        ))}
-      </View>
-
-      <Pressable
-        onPress={() => setShowHidden((v) => !v)}
-        style={[styles.moreBtn, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}
-      >
-        <FontAwesome6 name={showHidden ? 'chevron-up' : 'chevron-down'} size={12} color={colors.txSecondary} />
-        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.txSecondary, marginLeft: 8 }}>
-          {showHidden ? '숨기기' : '전체 여행 더보기'}
-        </Text>
-      </Pressable>
-
-      {showHidden && (
-        <View style={{ paddingHorizontal: 20, gap: 8, marginTop: 10 }}>
-          {hidden.map((t) => (
-            <HistoryCard key={t.id} trip={t} faded onPress={() => onTripPress(t.id)} />
-          ))}
+    return (
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={[styles.statCard, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
+          <StatCell value="12" label="여행 횟수" />
+          <StatCell value="48" label="총 여행일수" />
+          <StatCell value="28" label="방문 장소" />
+          <StatCell value="3.2만" label="총 지출액" last />
         </View>
-      )}
-    </ScrollView>
-  );
-}
+
+        <View style={styles.histHd}>
+          {searchOpen ? (
+            <View style={[styles.histSearchBox, { backgroundColor: colors.bgInput, borderColor: colors.bdInput }]}>
+              <FontAwesome6 name="magnifying-glass" size={12} color={colors.txMuted} />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="여행 기록 검색..."
+                placeholderTextColor={colors.txPlaceholder}
+                style={[styles.histSearchInput, { color: colors.txPrimary }]}
+                autoFocus
+              />
+              <Pressable onPress={toggleSearch}>
+                <FontAwesome6 name="xmark" iconStyle="solid" size={14} color={colors.txMuted} />
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              <Text style={[styles.groupLabelBig, { color: colors.txPrimary }]}>내 여행</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 12, color: colors.txMuted }}>{pinned.length}개</Text>
+                <Pressable onPress={toggleSearch}>
+                  <FontAwesome6 name="magnifying-glass" iconStyle="solid" size={13} color={colors.txMuted} />
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View>
+
+        <View style={{ paddingHorizontal: 20, gap: 8 }}>
+          {pinned.map((t) => (
+            <HistoryCard key={t.id} trip={t} onPress={() => onTripPress(t.id)} />
+          ))}
+          {q.length > 0 && pinned.length === 0 && hidden.length === 0 && (
+            <Text style={{ fontSize: 12, color: colors.txMuted, textAlign: 'center', paddingVertical: 20 }}>
+              '{q}'에 대한 검색 결과가 없어요
+            </Text>
+          )}
+        </View>
+
+        <Pressable
+          onPress={() => setShowHidden((v) => !v)}
+          style={[styles.moreBtn, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}
+        >
+          <FontAwesome6 name={showHidden ? 'chevron-up' : 'chevron-down'} size={12} color={colors.txSecondary} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.txSecondary, marginLeft: 8 }}>
+            {showHidden ? '숨기기' : '전체 여행 더보기'}
+          </Text>
+        </Pressable>
+
+        {showHidden && (
+          <View style={{ paddingHorizontal: 20, gap: 8, marginTop: 10 }}>
+            {hidden.map((t) => (
+              <HistoryCard key={t.id} trip={t} faded onPress={() => onTripPress(t.id)} />
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    );
+  }
 
 function StatCell({ value, label, last }: { value: string; label: string; last?: boolean }) {
   const { colors } = useTheme();
@@ -487,7 +598,12 @@ const styles = StyleSheet.create({
   dangerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 20 },
   statCard: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 14, borderRadius: 14, borderWidth: 0.5, paddingVertical: 12 },
   statCell: { flex: 1, alignItems: 'center' },
-  histHd: { paddingHorizontal: 20, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between' },
+  histHd: { paddingHorizontal: 20, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  histSearchBox: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7,
+  },
+  histSearchInput: { flex: 1, fontSize: 13, padding: 0 },
   histCard: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 14, borderWidth: 0.5 },
   histCollage: { width: 56, height: 56, borderRadius: 12, flexDirection: 'row', flexWrap: 'wrap', overflow: 'hidden' },
   histCollageCell: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },

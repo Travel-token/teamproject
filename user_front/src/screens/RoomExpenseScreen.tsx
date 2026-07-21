@@ -1,7 +1,8 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View,TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FormInput } from '../components/FormBits';
 import Fab from '../components/Fab';
 import IconCircleButton from '../components/IconCircleButton';
@@ -21,6 +22,7 @@ type SubTab = 'spend' | 'place' | 'transfer';
 
 export default function RoomExpenseScreen({ route, navigation }: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const baseTrip = trips.find((t) => t.id === route.params.tripId) ?? trips[0];
 
@@ -35,16 +37,52 @@ export default function RoomExpenseScreen({ route, navigation }: Props) {
   const [modalVisible, setModalVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const changeSubTab = (key: SubTab) => {
+  setSubTab(key);
+  setSearchOpen(false);
+  setSearchQuery('');
+  };
+
+  const toggleSearch = () => {
+    setSearchOpen((prev) => {
+      if (prev) setSearchQuery('');
+      return !prev;
+    });
+  };
+
 
   const grouped = useMemo(() => {
+    const q = searchQuery.trim();
+    const source = q ? expenses.filter((e) => e.name.includes(q) || e.payerName.includes(q)) : expenses;
     const map = new Map<string, ExpenseItem[]>();
-    expenses.forEach((e) => {
+    source.forEach((e) => {
       const list = map.get(e.dateLabel) ?? [];
       list.push(e);
       map.set(e.dateLabel, list);
     });
     return Array.from(map.entries());
-  }, [expenses]);
+  }, [expenses, searchQuery]);
+
+
+  const filteredPlaceList = useMemo(() => {
+    const q = searchQuery.trim();
+    return q ? placeList.filter((p) => p.name.includes(q)) : placeList;
+  }, [placeList, searchQuery]);
+
+  const filteredTransferList = useMemo(() => {
+    const q = searchQuery.trim();
+    return q ? transferList.filter((t) => t.fromName.includes(q) || t.toName.includes(q)) : transferList;
+  }, [transferList, searchQuery]);
+
+  const searchResultCount =
+    subTab === 'spend'
+      ? grouped.reduce((sum, [, items]) => sum + items.length, 0)
+      : subTab === 'place'
+      ? filteredPlaceList.length
+      : filteredTransferList.length;
 
   const onRoomTabChange = (key: RoomTabKey) => {
     if (key === 'settle') navigation.replace('RoomSettle', { tripId: trip.id });
@@ -77,31 +115,59 @@ export default function RoomExpenseScreen({ route, navigation }: Props) {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <FontAwesome6 name="chevron-left" size={16} color={colors.txPrimary} />
-        </Pressable>
-        <View style={styles.tripHead}>
-          <View style={[styles.tripEmojiSm, { backgroundColor: colors.bgCard2 }]}>
-            <Text style={{ fontSize: 17 }}>{trip.emoji}</Text>
-          </View>
-          <Text style={[styles.tripHdName, { color: colors.txPrimary }]} numberOfLines={1}>
-            {trip.name}
-          </Text>
-        </View>
-        <View style={styles.topRight}>
-          <IconCircleButton icon="magnifying-glass" />
-          <IconCircleButton icon="ellipsis" onPress={() => setMenuOpen(true)} />
-        </View>
+
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+        {searchOpen ? (
+          <>
+            <Pressable onPress={toggleSearch} style={styles.backBtn}>
+              <FontAwesome6 name="chevron-left" size={16} color={colors.txPrimary} />
+            </Pressable>
+            <View style={[styles.searchInlineBox, { backgroundColor: colors.bgInput, borderColor: colors.bdInput }]}>
+              <FontAwesome6 name="magnifying-glass" size={13} color={colors.txMuted} />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={subTab === 'spend' ? '지출 내역 검색...' : subTab === 'place' ? '장소 검색...' : '송금 내역 검색...'}
+                placeholderTextColor={colors.txPlaceholder}
+                style={[styles.searchInlineInput, { color: colors.txPrimary }]}
+                autoFocus
+              />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery('')}>
+                  <FontAwesome6 name="circle-xmark" iconStyle="solid" size={14} color={colors.txMuted} />
+                </Pressable>
+              )}
+            </View>
+            <Text style={[styles.searchCount, { color: colors.txMuted }]}>{searchResultCount}건</Text>
+          </>
+        ) : (
+          <>
+            <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <FontAwesome6 name="chevron-left" size={16} color={colors.txPrimary} />
+            </Pressable>
+            <View style={styles.tripHead}>
+              <View style={[styles.tripEmojiSm, { backgroundColor: colors.bgCard2 }]}>
+                <Text style={{ fontSize: 17 }}>{trip.emoji}</Text>
+              </View>
+              <Text style={[styles.tripHdName, { color: colors.txPrimary }]} numberOfLines={1}>
+                {trip.name}
+              </Text>
+            </View>
+            <View style={styles.topRight}>
+              <IconCircleButton icon="magnifying-glass" onPress={toggleSearch} />
+              <IconCircleButton icon="ellipsis" onPress={() => setMenuOpen(true)} />
+            </View>
+          </>
+        )}
       </View>
 
       <TripHero trip={trip} />
       <RoomTabBar active="expense" onChange={onRoomTabChange} />
 
       <View style={[styles.subTabRow, { borderBottomColor: colors.bdCard }]}>
-        <SubTab label="💳 지출" active={subTab === 'spend'} onPress={() => setSubTab('spend')} />
-        <SubTab label="📍 장소" active={subTab === 'place'} onPress={() => setSubTab('place')} />
-        <SubTab label="💸 송금" active={subTab === 'transfer'} onPress={() => setSubTab('transfer')} />
+        <SubTab label="💳 지출" active={subTab === 'spend'} changeSubTab={() => changeSubTab('spend')} />
+        <SubTab label="📍 장소" active={subTab === 'place'} changeSubTab={() => changeSubTab('place')} />
+        <SubTab label="💸 송금" active={subTab === 'transfer'} changeSubTab={() => changeSubTab('transfer')} />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
@@ -152,7 +218,7 @@ export default function RoomExpenseScreen({ route, navigation }: Props) {
 
         {subTab === 'place' && (
           <View>
-            {placeList.map((p) => (
+            {filteredPlaceList.map((p) => (
               <View key={p.id} style={[styles.expCard, { backgroundColor: colors.bgCard, borderColor: colors.bdCard, marginHorizontal: 20 }]}>
                 <View style={[styles.expIcon, { backgroundColor: colors.bgCard2 }]}>
                   <Text style={{ fontSize: 18 }}>{p.emoji}</Text>
@@ -179,7 +245,7 @@ export default function RoomExpenseScreen({ route, navigation }: Props) {
 
         {subTab === 'transfer' && (
           <View style={{ paddingHorizontal: 20 }}>
-            {transferList.map((t) => (
+            {filteredTransferList.map((t) => (
               <View key={t.id} style={[styles.transferCard, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
                 <View style={[styles.expIcon, { backgroundColor: colors.bgCard2 }]}>
                   <Text style={{ fontSize: 18 }}>💸</Text>
@@ -303,10 +369,10 @@ function ExpenseEditCard({
   );
 }
 
-function SubTab({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function SubTab({ label, active, changeSubTab }: { label: string; active: boolean; changeSubTab: () => void }) {
   const { colors } = useTheme();
   return (
-    <Pressable onPress={onPress} style={styles.subTabBtn}>
+    <Pressable onPress={changeSubTab} style={styles.subTabBtn}>
       <Text
         style={[
           styles.subTabLabel,
@@ -321,6 +387,8 @@ function SubTab({ label, active, onPress }: { label: string; active: boolean; on
 }
 
 const styles = StyleSheet.create({
+
+  
   screen: { flex: 1 },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
   backBtn: { marginRight: 10 },
@@ -347,6 +415,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 0.5,
   },
+
+  searchInlineBox: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  searchInlineInput: { flex: 1, fontSize: 14, padding: 0 },
+  searchCount: { fontSize: 11, marginLeft: 8, minWidth: 30, textAlign: 'center' },
+
   expIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   expName: { fontSize: 13, fontWeight: '700' },
   expMeta: { fontSize: 11, marginTop: 2 },

@@ -11,10 +11,14 @@ export default function Fab({ label, onPress }: { label: string; onPress?: () =>
         onPress={onPress}
         style={({ pressed }) => [
           styles.btn,
-          { backgroundColor: 'rgba(128,128,128,0.18)', transform: [{ scale: pressed ? 0.93 : 1 }] },
+          {
+            backgroundColor: colors.bgIconBtn,
+            borderColor: colors.bdCard,
+            transform: [{ scale: pressed ? 0.93 : 1 }],
+          },
         ]}
       >
-        <FontAwesome6 name="plus" size={20} color={colors.txPrimary} />
+        <FontAwesome6 name="plus" iconStyle="solid" size={20} color={colors.txPrimary} />
       </Pressable>
       <Text style={[styles.label, { color: colors.txMuted }]}>{label}</Text>
     </View>
@@ -27,8 +31,14 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
   },
   label: {
     fontSize: 10,

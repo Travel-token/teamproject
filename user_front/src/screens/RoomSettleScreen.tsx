@@ -2,6 +2,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '../components/Avatar';
 import BottomSheetModal from '../components/BottomSheetModal';
 import { CancelButton, SubmitButton } from '../components/FormBits';
@@ -19,6 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'RoomSettle'>;
 
 export default function RoomSettleScreen({ route, navigation }: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const baseTrip = trips.find((t) => t.id === route.params.tripId) ?? trips[0];
   const [tripEmoji, setTripEmoji] = useState(baseTrip.emoji);
@@ -36,7 +38,7 @@ export default function RoomSettleScreen({ route, navigation }: Props) {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <FontAwesome6 name="chevron-left" size={16} color={colors.txPrimary} />
         </Pressable>

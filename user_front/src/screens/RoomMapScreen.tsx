@@ -2,6 +2,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import BottomSheetModal from '../components/BottomSheetModal';
 import { CancelButton, SubmitButton } from '../components/FormBits';
@@ -20,6 +21,7 @@ const GALLERY = ['🌊', '🌿', '🌅', '🍊', '🐴', '🏖️'];
 
 export default function RoomMapScreen({ route, navigation }: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const baseTrip = trips.find((t) => t.id === route.params.tripId) ?? trips[0];
   const [tripEmoji, setTripEmoji] = useState(baseTrip.emoji);
   const [tripName, setTripName] = useState(baseTrip.name);
@@ -69,7 +71,7 @@ export default function RoomMapScreen({ route, navigation }: Props) {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <FontAwesome6 name="chevron-left" size={16} color={colors.txPrimary} />
         </Pressable>

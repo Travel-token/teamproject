@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '../components/Avatar';
 import Fab from '../components/Fab';
 import IconCircleButton from '../components/IconCircleButton';
@@ -26,6 +27,7 @@ type Props = CompositeScreenProps<
 
 export default function SettleHomeScreen({ navigation }: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [trips, setTrips] = useState<Trip[]>(initialTrips);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -48,7 +50,7 @@ export default function SettleHomeScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <View>
           <View style={styles.locationRow}>
             <View style={[styles.locDot, { backgroundColor: colors.txPrimary }]} />
