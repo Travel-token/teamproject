@@ -10,9 +10,7 @@ import com.example.demo.dto.Trip_ResponseDto;
 import com.example.demo.repository.Trip_repository;
 import com.example.demo.vo.Trip_vo;
 
-// ============================================================
 // [g 단계에서 추가된 것] getActiveTrip 구현
-// ============================================================
 @Service
 public class Trip_serviceImpl implements Trip_service {
 
@@ -141,7 +139,6 @@ public class Trip_serviceImpl implements Trip_service {
     // [h-6] 여행 상태 변경
     @Override
     public Trip_ResponseDto changeStatus(Long tripId, String status) {
-        // 문지기: 허용된 상태값만 통과 (오타나 이상한 값 차단)
         if (!"ongoing".equals(status) && !"ended".equals(status) && !"saved".equals(status)) {
             throw new IllegalArgumentException("status는 ongoing / ended / saved 만 가능합니다.");
         }

@@ -5,10 +5,7 @@ import java.util.List;
 import com.example.demo.dto.Trip_RequestDto;
 import com.example.demo.dto.Trip_ResponseDto;
 
-// ============================================================
-// Trip_service : 요리사의 "할 수 있는 일 목록" (메뉴판)
 // [g 단계에서 추가된 것] getActiveTrip
-// ============================================================
 public interface Trip_service {
 
     // 여행방 만들기 (f-1 ~ f-7)

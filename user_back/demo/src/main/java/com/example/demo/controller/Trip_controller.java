@@ -55,15 +55,12 @@ public class Trip_controller {
         Trip_ResponseDto active = tripService.getActiveTrip();
         if (active == null) {
             // 진행중 여행 없음 → 204 No Content
-            // = "요청은 잘 처리했는데, 돌려줄 내용물이 없어요"라는 HTTP 정식 표현.
-            //   404(주소가 틀림)와는 다른, 정중한 '빈손' 답변이에요.
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.ok(active);
     }
     // ---------- [h] 여행 삭제 : DELETE /api/trips/{tripId} ----------
     // {tripId} = 주소 속 변수. /api/trips/3 으로 요청이 오면 tripId에 3이 담김
-    // @PathVariable = "주소에서 그 값을 뽑아 변수에 넣어줘"
     @DeleteMapping("/{tripId}")
     public ResponseEntity<?> deleteTrip(@PathVariable Long tripId) {
         boolean deleted = tripService.deleteTrip(tripId);
@@ -88,7 +85,6 @@ public class Trip_controller {
     }
 
     // ---------- [h-6] 여행 보관함 저장 : POST /api/trips/{tripId}/save ----------
-    // 프론트 tripApi.js의 archiveTrip()이 기다리던 바로 그 주소
     @PostMapping("/{tripId}/save")
     public ResponseEntity<?> saveTrip(@PathVariable Long tripId) {
         try {

@@ -2,10 +2,6 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<!-- ============================================================
-  Trip_mapper.xml : 창고지기(Trip_repository)의 SQL 작업 지시서
-  [g 단계에서 추가된 것] findActive
-============================================================ -->
 <mapper namespace="com.example.demo.repository.Trip_repository">
 
     <insert id="insertTrip" parameterType="com.example.demo.vo.Trip_vo"
@@ -29,10 +25,6 @@
         ORDER BY created_at DESC
     </select>
 
-    <!-- [NEW] 진행중 여행 1건.
-         WHERE status = 'ongoing' : 진행중인 것만 골라서
-         ORDER BY created_at DESC : 최근에 만든 순서로 줄 세운 뒤
-         LIMIT 1                  : 맨 앞의 1건만 가져와라 -->
     <select id="findActive" resultType="com.example.demo.vo.Trip_vo">
         SELECT trip_id, name, emoji, region, start_date, end_date,
                budget, currency, status, created_at

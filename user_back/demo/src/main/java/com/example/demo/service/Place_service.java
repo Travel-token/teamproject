@@ -5,9 +5,6 @@ import java.util.List;
 import com.example.demo.dto.Place_RequestDto;
 import com.example.demo.dto.Place_ResponseDto;
 
-// ============================================================
-// Place_service : 장소 요리사 메뉴판 (k 단계)
-// ============================================================
 public interface Place_service {
 
     // 장소 기록 추가 (k-1~k-4)

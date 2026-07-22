@@ -1,12 +1,5 @@
 package com.example.demo.dto;
 
-// ============================================================
-// Trip_RequestDto : 프론트가 보낸 JSON 소포를 받는 상자
-// - 변수 이름을 프론트가 보내는 JSON의 키 이름(startDate 등)과
-//   똑같이 맞춰야 Spring이 자동으로 값을 채워 넣습니다.
-// - 프론트(JS) 세계는 camelCase, DB 세계는 snake_case라서
-//   상자를 따로 두고 Service(요리사)가 옮겨 담습니다.
-// ============================================================
 public class Trip_RequestDto {
 
     private String name;        // 방 이름 (필수)

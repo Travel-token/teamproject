@@ -11,18 +11,12 @@ import com.example.demo.repository.Place_repository;
 import com.example.demo.repository.Trip_repository;
 import com.example.demo.vo.Place_vo;
 
-// ============================================================
-// Place_serviceImpl : 장소 요리사 본체
-// 특이점: 창고지기를 "둘" 데리고 있음 (Place + Trip)
-//   → 장소를 넣기 전에 "부모 방이 실존하는지"를 Trip 창고지기에게 확인
-// ============================================================
 @Service
 public class Place_serviceImpl implements Place_service {
 
     private final Place_repository placeRepository;
     private final Trip_repository tripRepository;
 
-    // 생성자 주입: Spring이 창고지기 둘을 모두 데려와 연결
     public Place_serviceImpl(Place_repository placeRepository, Trip_repository tripRepository) {
         this.placeRepository = placeRepository;
         this.tripRepository = tripRepository;
@@ -30,11 +24,9 @@ public class Place_serviceImpl implements Place_service {
 
     @Override
     public Place_ResponseDto addPlace(Long tripId, Place_RequestDto request) {
-        // 문지기 ①: 부모 방이 실존하는지 (없는 방에 장소를 달 수 없음)
         if (tripRepository.findById(tripId) == null) {
             throw new IllegalArgumentException("해당 여행이 존재하지 않습니다.");
         }
-        // 문지기 ②: 장소명은 필수 (명세서 k-1)
         if (request.getName() == null || request.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("장소명은 필수입니다.");
         }

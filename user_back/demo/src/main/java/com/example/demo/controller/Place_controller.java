@@ -17,15 +17,6 @@ import com.example.demo.dto.Place_RequestDto;
 import com.example.demo.dto.Place_ResponseDto;
 import com.example.demo.service.Place_service;
 
-// ============================================================
-// Place_controller : 장소 카운터 (k 단계)
-// 간판 주소에 {tripId}가 들어있는 게 특징!
-//   POST   /api/trips/3/places     → 3번 방에 장소 추가
-//   GET    /api/trips/3/places     → 3번 방의 장소 목록
-//   DELETE /api/trips/3/places/7   → 7번 장소 기록 삭제
-// "장소는 반드시 어떤 방 소속"이라는 관계가 주소에 그대로 드러남
-// (프론트 tripApi.js의 addPlaceLog가 기다리던 바로 그 주소)
-// ============================================================
 @RestController
 @RequestMapping("/api/trips/{tripId}/places")
 public class Place_controller {

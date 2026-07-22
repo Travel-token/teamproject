@@ -6,9 +6,6 @@ import org.apache.ibatis.annotations.Mapper;
 
 import com.example.demo.vo.Place_vo;
 
-// ============================================================
-// Place_repository : 장소 창고지기
-// ============================================================
 @Mapper
 public interface Place_repository {
 

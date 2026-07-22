@@ -1,9 +1,5 @@
 package com.example.demo.dto;
 
-// ============================================================
-// Place_RequestDto : 프론트가 보낸 장소 기록 소포
-// (trip_id는 소포가 아니라 "주소(/api/trips/3/places)"에서 오므로 여기 없음!)
-// ============================================================
 public class Place_RequestDto {
 
     private String name;       // 장소명 (필수)

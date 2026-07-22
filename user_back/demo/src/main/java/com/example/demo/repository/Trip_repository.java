@@ -7,10 +7,6 @@ import org.apache.ibatis.annotations.Param;
 
 import com.example.demo.vo.Trip_vo;
 
-// ============================================================
-// Trip_repository : 창고지기 (DB에 드나드는 유일한 통로)
-// [g 단계에서 추가된 것] findActive — 진행중(ongoing) 여행 1건 찾기
-// ============================================================
 @Mapper
 public interface Trip_repository {
 

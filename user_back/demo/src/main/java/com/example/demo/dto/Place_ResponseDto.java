@@ -2,9 +2,6 @@ package com.example.demo.dto;
 
 import com.example.demo.vo.Place_vo;
 
-// ============================================================
-// Place_ResponseDto : 서버가 돌려주는 장소 기록 답장 (camelCase)
-// ============================================================
 public class Place_ResponseDto {
 
     private Long placeId;
