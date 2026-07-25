@@ -72,7 +72,7 @@ export async function deleteMyFeed(id: string): Promise<void> {
 export interface HistoryStats {
   tripCount: number;
   totalDays: number;
-  placeCount: number;
+  placeCount: number;   
   totalExpense: number; // 원 단위, 화면에서 "3.2만" 처럼 축약 표기하려면 프론트에서 가공
 }
 
