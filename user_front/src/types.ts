@@ -35,6 +35,8 @@ export interface PlaceItem {
   name: string;
   timeLabel: string;
   withMembers: string;
+  lat: number;
+  lng: number;
 }
 
 export interface TransferItem {

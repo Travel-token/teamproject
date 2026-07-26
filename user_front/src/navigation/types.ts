@@ -14,3 +14,15 @@ export type TabParamList = {
   Settle: undefined;
   MyPage: undefined;
 };
+
+
+export interface PlaceItem {
+  id: string;
+  dateLabel: string;
+  emoji: string;
+  name: string;
+  timeLabel: string;
+  withMembers: string;
+  lat?: number;
+  lng?: number;
+}

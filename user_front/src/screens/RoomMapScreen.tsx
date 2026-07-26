@@ -14,6 +14,7 @@ import { places as initialPlaces, trips } from '../data/mockData';
 import { useTheme } from '../theme/ThemeContext';
 import { PlaceItem } from '../types';
 import { RootStackParamList } from '../navigation/types';
+import RouteMapView from '../components/RouteMapView';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RoomMap'>;
 
@@ -97,11 +98,14 @@ export default function RoomMapScreen({ route, navigation }: Props) {
         onDragEnd={({ data }) => setSpots(data)}
         renderItem={renderSpot}
         ListHeaderComponent={
-          <View style={styles.routeHd}>
-            <Text style={[styles.sectionTitle, { color: colors.txPrimary }]}>방문 순서</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <FontAwesome6 name="arrows-up-down" size={10} color={colors.txMuted} />
-              <Text style={{ fontSize: 11, color: colors.txMuted, marginLeft: 4 }}>꾹 눌러서 순서를 바꿀 수 있어요</Text>
+          <View>
+            <RouteMapView spots={spots} />
+            <View style={styles.routeHd}>
+              <Text style={[styles.sectionTitle, { color: colors.txPrimary }]}>방문 순서</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <FontAwesome6 name="arrows-up-down" size={10} color={colors.txMuted} />
+                <Text style={{ fontSize: 11, color: colors.txMuted, marginLeft: 4 }}>꾹 눌러서 순서를 바꿀 수 있어요</Text>
+              </View>
             </View>
           </View>
         }
