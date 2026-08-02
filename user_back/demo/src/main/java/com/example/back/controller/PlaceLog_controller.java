@@ -35,7 +35,7 @@ public class PlaceLog_controller {
     }
 
     @PostMapping
-    public ResponseEntity<?> addLog(@PathVariable Long tripId,
+    public ResponseEntity<?> addLog(@PathVariable("tripId") Long tripId,
                                     @RequestBody PlaceLog_RequestDto request) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(placeLogService.addLog(tripId, request));
@@ -45,13 +45,13 @@ public class PlaceLog_controller {
     }
 
     @GetMapping
-    public ResponseEntity<List<PlaceLog_ResponseDto>> getLogs(@PathVariable Long tripId) {
+    public ResponseEntity<List<PlaceLog_ResponseDto>> getLogs(@PathVariable("tripId") Long tripId) {
         return ResponseEntity.ok(placeLogService.getLogs(tripId));
     }
 
     @DeleteMapping("/{logId}")
-    public ResponseEntity<?> deleteLog(@PathVariable Long tripId,
-                                       @PathVariable Long logId) {
+    public ResponseEntity<?> deleteLog(@PathVariable("tripId") Long tripId,
+                                       @PathVariable("logId") Long logId) {
         if (!placeLogService.deleteLog(logId)) {
             return ResponseEntity.notFound().build();
         }

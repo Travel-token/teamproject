@@ -59,7 +59,7 @@ public class Trip_controller {
 
     @GetMapping
     public ResponseEntity<List<Trip_ResponseDto>> getAllTrips(
-            @RequestParam(required = false) String status) {
+            @RequestParam(name = "status", required = false) String status) {
         return ResponseEntity.ok(tripService.getAllTrips(status));
     }
 
@@ -73,7 +73,7 @@ public class Trip_controller {
     }
 
     @GetMapping("/{tripId}")
-    public ResponseEntity<?> getTrip(@PathVariable Long tripId) {
+    public ResponseEntity<?> getTrip(@PathVariable("tripId") Long tripId) {
         try {
             return ResponseEntity.ok(tripService.getTrip(tripId));
         } catch (IllegalArgumentException e) {
@@ -82,7 +82,7 @@ public class Trip_controller {
     }
 
     @PatchMapping("/{tripId}")
-    public ResponseEntity<?> updateTrip(@PathVariable Long tripId,
+    public ResponseEntity<?> updateTrip(@PathVariable("tripId") Long tripId,
                                         @RequestBody Trip_RequestDto request) {
         try {
             return ResponseEntity.ok(tripService.updateTrip(tripId, request));
@@ -92,7 +92,7 @@ public class Trip_controller {
     }
 
     @DeleteMapping("/{tripId}")
-    public ResponseEntity<?> deleteTrip(@PathVariable Long tripId) {
+    public ResponseEntity<?> deleteTrip(@PathVariable("tripId") Long tripId) {
         if (!tripService.deleteTrip(tripId)) {
             return ResponseEntity.notFound().build();
         }
@@ -101,7 +101,7 @@ public class Trip_controller {
 
     // 여행 종료: "정산 끝내기" 등에서 호출 (status → completed)
     @PostMapping("/{tripId}/complete")
-    public ResponseEntity<?> completeTrip(@PathVariable Long tripId) {
+    public ResponseEntity<?> completeTrip(@PathVariable("tripId") Long tripId) {
         try {
             return ResponseEntity.ok(tripService.changeStatus(tripId, "completed"));
         } catch (IllegalArgumentException e) {
@@ -111,7 +111,7 @@ public class Trip_controller {
 
     // 초대 코드 조회 (프론트 공유 화면용)
     @GetMapping("/{tripId}/invite-code")
-    public ResponseEntity<?> getInviteCode(@PathVariable Long tripId) {
+    public ResponseEntity<?> getInviteCode(@PathVariable("tripId") Long tripId) {
         try {
             return ResponseEntity.ok(Map.of("inviteCode", tripService.getInviteCode(tripId)));
         } catch (IllegalArgumentException e) {
@@ -122,12 +122,12 @@ public class Trip_controller {
     // ---------- 멤버 ----------
 
     @GetMapping("/{tripId}/members")
-    public ResponseEntity<List<TripMember_ResponseDto>> getMembers(@PathVariable Long tripId) {
+    public ResponseEntity<List<TripMember_ResponseDto>> getMembers(@PathVariable("tripId") Long tripId) {
         return ResponseEntity.ok(tripService.getMembers(tripId));
     }
 
     @PostMapping("/{tripId}/members")
-    public ResponseEntity<?> addMember(@PathVariable Long tripId,
+    public ResponseEntity<?> addMember(@PathVariable("tripId") Long tripId,
                                        @RequestBody TripMember_RequestDto request) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(tripService.addMember(tripId, request));
@@ -137,8 +137,8 @@ public class Trip_controller {
     }
 
     @DeleteMapping("/{tripId}/members/{memberId}")
-    public ResponseEntity<?> removeMember(@PathVariable Long tripId,
-                                          @PathVariable Long memberId) {
+    public ResponseEntity<?> removeMember(@PathVariable("tripId") Long tripId,
+                                          @PathVariable("memberId") Long memberId) {
         if (!tripService.removeMember(memberId)) {
             return ResponseEntity.notFound().build();
         }
