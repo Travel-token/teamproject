@@ -2,7 +2,11 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<!-- User 기능 SQL 지시서 (담당: 박찬민) - 아직 비어 있음 -->
-<mapper namespace="com.example.demo.repository.User_repository">
+<!-- User 기능 SQL 지시서 (담당: 박찬민) - 아직 비어 있음
+     ※ User_repository가 아직 일반 class라 namespace를 연결하면 시동이 막힘.
+        박찬민님이 @Mapper interface로 만들면 아래 namespace를 되살릴 것:
+        <mapper namespace="com.example.back.repository.User_repository">
+     그때까지는 아무 인터페이스도 가리키지 않는 임시 이름으로 둡니다. -->
+<mapper namespace="com.example.back.mapper.UserMapperPlaceholder">
 
 </mapper>

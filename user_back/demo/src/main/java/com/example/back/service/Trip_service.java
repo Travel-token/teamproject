@@ -1,29 +1,29 @@
-package com.example.demo.service;
+package com.example.back.service;
 
 import java.util.List;
 
-import com.example.demo.dto.Trip_RequestDto;
-import com.example.demo.dto.Trip_ResponseDto;
+import com.example.back.dto.Trip_RequestDto;
+import com.example.back.dto.Trip_ResponseDto;
+import com.example.back.dto.TripMember_RequestDto;
+import com.example.back.dto.TripMember_ResponseDto;
 
-// [g 단계에서 추가된 것] getActiveTrip
+// ============================================================
+// Trip_service : 여행+멤버 요리사 메뉴판
+// ============================================================
 public interface Trip_service {
 
-    // 여행방 만들기 (f-1 ~ f-7)
+    // 여행 (f, g, h)
     Trip_ResponseDto createTrip(Trip_RequestDto request);
-
-    // 여행방 목록. status가 null이면 전체, "ended"면 지난 여행만 (g 잔여)
-    List<Trip_ResponseDto> getAllTrips(String status);
-
-    // [NEW] 현재 진행중인 여행 1건 (없으면 null 반환)
-    Trip_ResponseDto getActiveTrip();
-
-    // [h] 여행 삭제. 성공하면 true, 그런 방이 없으면 false
-    boolean deleteTrip(Long tripId);
-
-    // [h] 여행 수정. 수정 후의 최신 모습을 돌려줌
+    List<Trip_ResponseDto> getAllTrips(String status);   // status null이면 전체
+    Trip_ResponseDto getActiveTrip();                    // 진행중 1건, 없으면 null
+    Trip_ResponseDto getTrip(Long tripId);
     Trip_ResponseDto updateTrip(Long tripId, Trip_RequestDto request);
-
-    // [h-6] 여행 상태 변경 (진행중 → 종료/보관). 바뀐 최신 모습을 돌려줌
     Trip_ResponseDto changeStatus(Long tripId, String status);
+    boolean deleteTrip(Long tripId);
+    String getInviteCode(Long tripId);                   // 초대 코드 조회 (h-2)
 
+    // 멤버 (h-2, h-3)
+    TripMember_ResponseDto addMember(Long tripId, TripMember_RequestDto request);
+    List<TripMember_ResponseDto> getMembers(Long tripId);
+    boolean removeMember(Long memberId);
 }
