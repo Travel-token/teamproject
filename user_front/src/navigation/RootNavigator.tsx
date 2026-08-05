@@ -9,6 +9,8 @@ import RoomSettleScreen from '../screens/RoomSettleScreen';
 import TabNavigator from './TabNavigator';
 import { RootStackParamList } from './types';
 
+import LoginScreen from '../screens/LoginScreen';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
@@ -27,13 +29,43 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer theme={navTheme}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Tabs" component={TabNavigator} />
-        <Stack.Screen name="FeedDetail" component={FeedDetailScreen} />
-        <Stack.Screen name="RoomExpense" component={RoomExpenseScreen} />
-        <Stack.Screen name="RoomSettle" component={RoomSettleScreen} />
-        <Stack.Screen name="RoomMap" component={RoomMapScreen} />
-      </Stack.Navigator>
+
+      
+<Stack.Navigator screenOptions={{ headerShown: false }}>
+
+    <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+    />
+
+    <Stack.Screen
+        name="Tabs"
+        component={TabNavigator}
+    />
+
+    <Stack.Screen
+        name="FeedDetail"
+        component={FeedDetailScreen}
+    />
+
+    <Stack.Screen
+        name="RoomExpense"
+        component={RoomExpenseScreen}
+    />
+
+    <Stack.Screen
+        name="RoomSettle"
+        component={RoomSettleScreen}
+    />
+
+    <Stack.Screen
+        name="RoomMap"
+        component={RoomMapScreen}
+    />
+
+</Stack.Navigator>
+
+
     </NavigationContainer>
   );
 }

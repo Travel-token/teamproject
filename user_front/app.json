@@ -14,7 +14,13 @@
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "config":{
+        "googleMaps":{
+          "apiKey":"AIzaSyDShYCuL9Ra-ZMH9p4iR0F3b4WPN9YHJng"
+        }
+      }
+    },
     "web": {
       "bundler": "metro"
     },

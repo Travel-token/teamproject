@@ -95,6 +95,8 @@ export const places: PlaceItem[] = [
     name: '제주국제공항',
     timeLabel: '오전 11:30',
     withMembers: '나, 지수, 민호',
+    lat: 33.5066,
+    lng: 126.4930,
   },
   {
     id: 'p2',
@@ -103,6 +105,8 @@ export const places: PlaceItem[] = [
     name: '제주 게스트하우스',
     timeLabel: '오후 4:00',
     withMembers: '나, 지수, 민호',
+    lat: 33.4996,
+    lng: 126.5312,
   },
 ];
 
