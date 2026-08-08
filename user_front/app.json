@@ -15,9 +15,9 @@
       "supportsTablet": false
     },
     "android": {
-      "config":{
-        "googleMaps":{
-          "apiKey":"AIzaSyDShYCuL9Ra-ZMH9p4iR0F3b4WPN9YHJng"
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDShYCuL9Ra-ZMH9p4iR0F3b4WPN9YHJng"
         }
       }
     },
@@ -25,7 +25,8 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-router"
     ]
   }
 }

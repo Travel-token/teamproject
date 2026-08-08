@@ -58,10 +58,10 @@ export default function RootNavigator() {
         component={RoomSettleScreen}
     />
 
-    <Stack.Screen
+    {/* <Stack.Screen
         name="RoomMap"
         component={RoomMapScreen}
-    />
+    /> */}
 
 </Stack.Navigator>
 

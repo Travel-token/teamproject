@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.back.mapper.FeedPostPhotoMapper">
+
+    <resultMap id="feedPostPhotoResultMap" type="com.example.back.vo.feed.FeedPostPhotoVo">
+        <id     column="id"            property="id" />
+        <result column="feed_post_id"  property="feedPostId" />
+        <result column="photo_url"     property="photoUrl" />
+        <result column="sort_order"    property="sortOrder" />
+    </resultMap>
+
+    <select id="selectByFeedPostId" resultMap="feedPostPhotoResultMap">
+        SELECT * FROM feed_post_photos
+        WHERE feed_post_id = #{feedPostId}
+        ORDER BY sort_order ASC
+    </select>
+
+    <insert id="insertAll">
+        INSERT INTO feed_post_photos (feed_post_id, photo_url, sort_order)
+        VALUES
+        <foreach collection="photos" item="photo" separator=",">
+            (#{photo.feedPostId}, #{photo.photoUrl}, #{photo.sortOrder})
+        </foreach>
+    </insert>
+
+    <delete id="deleteByFeedPostId">
+        DELETE FROM feed_post_photos
+        WHERE feed_post_id = #{feedPostId}
+    </delete>
+
+</mapper>

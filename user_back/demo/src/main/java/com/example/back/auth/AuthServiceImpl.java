@@ -2,8 +2,8 @@ package com.example.back.auth;
 
 import org.springframework.stereotype.Service;
 
+import com.example.back.vo.user.UserVo;
 import com.example.back.service.UserService;
-import com.example.back.vo.UserVo;
 
 import lombok.RequiredArgsConstructor;
 
@@ -46,10 +46,10 @@ public class AuthServiceImpl implements AuthService {
 
             newUser.setName("테스트유저");
             newUser.setEmail(email);
-            newUser.setLoginProvider(loginProvider.getValue());
+            newUser.setLoginProvider(null);
             newUser.setProfileEmoji("😀");
-            newUser.setStatus("active");
-            userService.save(newUser);
+            //newUser.setStatus("active");
+            userService.saveid(newUser);
 
             user = userService.findByEmail(email);
 

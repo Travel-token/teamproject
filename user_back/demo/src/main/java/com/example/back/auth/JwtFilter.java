@@ -1,6 +1,7 @@
 package com.example.back.auth;
 
 import java.io.IOException;
+import java.util.Collections;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,70 +18,36 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
-    private final JwtProvider jwtProvider;
+        private final JwtProvider jwtProvider;
 
+        @Override
+        protected void doFilterInternal(
+                        HttpServletRequest request,
+                        HttpServletResponse response,
+                        FilterChain filterChain) throws ServletException, IOException {
 
-    @Override
-    protected void doFilterInternal(
+                String token = resolveToken(request);
 
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
+                if (token != null && jwtProvider.validateToken(token)) {
 
-    ) throws ServletException, IOException {
+                        Long userId = jwtProvider.getUserId(token);
 
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                        userId,
+                                        null,
+                                        Collections.emptyList());
 
-        String token = resolveToken(request);
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
 
-
-        if(token != null &&
-                jwtProvider.validateToken(token)){
-
-            Long userId =
-                    jwtProvider.getUserId(token);
-
-            UsernamePasswordAuthenticationToken
-                    authentication =
-
-                    new UsernamePasswordAuthenticationToken(
-
-                            userId,
-                            null
-                    );
-
-
-            SecurityContextHolder
-                    .getContext()
-                    .setAuthentication(authentication);
-
+                filterChain.doFilter(request, response);
         }
 
-
-        filterChain.doFilter(
-                request,
-                response
-        );
-
-    }
-
-
-
-    private String resolveToken(
-            HttpServletRequest request){
-
-        String bearer =
-                request.getHeader("Authorization");
-
-
-        if(bearer != null &&
-                bearer.startsWith("Bearer ")){
-
-            return bearer.substring(7);
-
+        private String resolveToken(HttpServletRequest request) {
+                String bearer = request.getHeader("Authorization");
+                if (bearer != null && bearer.startsWith("Bearer ")) {
+                        return bearer.substring(7);
+                }
+                return null;
         }
-
-        return null;
-
-    }
-
 }

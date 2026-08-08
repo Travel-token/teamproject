@@ -1,16 +1,16 @@
-import { FontAwesome6 } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 import BottomSheetModal from './BottomSheetModal';
 import { CancelButton, FormInput, SubmitButton } from './FormBits';
 import { useTheme } from '../theme/ThemeContext';
 
-const PHOTO_EMOJIS = ['🌊', '🥩', '🌅', '☕', '🏖️', '🌿', '🍜', '🐴'];
-
+// TODO: 지금은 장소를 숫자 ID로 직접 입력받는 임시 폼입니다.
+// 한국관광공사 TourAPI 연동 장소 검색이 붙으면 placeId는 검색 결과 선택으로 자동 채워지도록 교체하세요.
+// 사진도 URL 직접 입력 대신 실제 업로드(이미지 선택 + 스토리지 업로드) API로 교체가 필요합니다.
 export interface FeedFormValue {
-  place: string;
+  placeId: number;
   caption: string;
-  emoji: string;
+  photoUrl: string;
 }
 
 export default function FeedFormModal({
@@ -27,40 +27,57 @@ export default function FeedFormModal({
   onSubmit: (value: FeedFormValue) => void;
 }) {
   const { colors } = useTheme();
-  const [place, setPlace] = useState('');
+  const [placeId, setPlaceId] = useState('');
   const [caption, setCaption] = useState('');
-  const [emoji, setEmoji] = useState(PHOTO_EMOJIS[0]);
+  const [photoUrl, setPhotoUrl] = useState('');
 
   useEffect(() => {
     if (visible) {
-      setPlace(initialValue?.place ?? '');
+      setPlaceId(initialValue?.placeId ? String(initialValue.placeId) : '');
       setCaption(initialValue?.caption ?? '');
-      setEmoji(initialValue?.emoji ?? PHOTO_EMOJIS[0]);
+      setPhotoUrl(initialValue?.photoUrl ?? '');
     }
   }, [visible, initialValue]);
 
+  const placeIdNumber = Number(placeId);
+  const canSubmit = mode === 'edit' || (placeId.trim().length > 0 && !Number.isNaN(placeIdNumber));
+
   return (
     <BottomSheetModal visible={visible} onClose={onClose} title={mode === 'create' ? '피드 작성' : '피드 수정'} maxHeightPct={90}>
-      <Text style={[styles.label, { color: colors.txMuted }]}>여행지</Text>
-      <FormInput value={place} onChangeText={setPlace} placeholder="예: 성산일출봉, 제주" style={{ marginBottom: 4 }} />
-      <Text style={[styles.hint, { color: colors.txPlaceholder }]}>
-        (데모: 실제 서비스에서는 한국관광공사 TourAPI 연동 검색으로 대체 예정)
+      {mode === 'create' && (
+        <>
+          <Text style={{ fontSize: 11, fontWeight: '700', marginTop: 16, marginBottom: 8, color: colors.txMuted }}>
+            장소 ID (임시)
+          </Text>
+          <FormInput
+            value={placeId}
+            onChangeText={setPlaceId}
+            placeholder="예: 1"
+            keyboardType="number-pad"
+            style={{ marginBottom: 4 }}
+          />
+          <Text style={{ fontSize: 10, marginBottom: 8, color: colors.txPlaceholder }}>
+            (데모: 실제 서비스에서는 한국관광공사 TourAPI 연동 장소 검색으로 대체 예정)
+          </Text>
+        </>
+      )}
+
+      <Text style={{ fontSize: 11, fontWeight: '700', marginTop: 16, marginBottom: 8, color: colors.txMuted }}>
+        사진 URL (선택)
+      </Text>
+      <FormInput
+        value={photoUrl}
+        onChangeText={setPhotoUrl}
+        placeholder="https://..."
+        style={{ marginBottom: 4 }}
+      />
+      <Text style={{ fontSize: 10, marginBottom: 8, color: colors.txPlaceholder }}>
+        (데모: 실제 서비스에서는 이미지 업로드로 대체 예정)
       </Text>
 
-      <Text style={[styles.label, { color: colors.txMuted }]}>사진 (대표 이모지 선택)</Text>
-      <View style={styles.photoGrid}>
-        {PHOTO_EMOJIS.map((e) => (
-          <Pressable
-            key={e}
-            onPress={() => setEmoji(e)}
-            style={[styles.photoCell, { backgroundColor: e === emoji ? colors.bgChipActive : colors.bgCard2 }]}
-          >
-            <Text style={{ fontSize: 22 }}>{e}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Text style={[styles.label, { color: colors.txMuted }]}>글쓰기</Text>
+      <Text style={{ fontSize: 11, fontWeight: '700', marginTop: 16, marginBottom: 8, color: colors.txMuted }}>
+        글쓰기
+      </Text>
       <FormInput
         value={caption}
         onChangeText={setCaption}
@@ -71,8 +88,9 @@ export default function FeedFormModal({
 
       <SubmitButton
         label="피드 등록하기"
+        disabled={!canSubmit}
         onPress={() => {
-          onSubmit({ place: place || '새로운 장소', caption: caption || '', emoji });
+          onSubmit({ placeId: mode === 'create' ? placeIdNumber : initialValue?.placeId ?? 0, caption, photoUrl });
           onClose();
         }}
       />
@@ -80,10 +98,3 @@ export default function FeedFormModal({
     </BottomSheetModal>
   );
 }
-
-const styles = StyleSheet.create({
-  label: { fontSize: 11, fontWeight: '700', marginTop: 16, marginBottom: 8 },
-  hint: { fontSize: 10, marginBottom: 8 },
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoCell: { width: 52, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-});

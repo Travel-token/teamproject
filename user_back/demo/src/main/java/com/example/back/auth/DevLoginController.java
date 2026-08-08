@@ -8,13 +8,11 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 public class DevLoginController {
-    
-    
-    private final AuthService authService;
 
+    private final AuthService authService;
 
     @PostMapping("/dev-login")
     public LoginResponseDto devLogin(@RequestBody DevLoginRequestDto request) {

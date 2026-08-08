@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.back.mapper.FeedMapper">
+
+    <resultMap id="feedPostResultMap" type="com.example.back.vo.feed.FeedPostVo">
+        <id     column="id"              property="id" />
+        <result column="place_id"        property="placeId" />
+        <result column="author_id"       property="authorId" />
+        <result column="caption"         property="caption" />
+        <result column="distance_km"     property="distanceKm" />
+        <result column="likes_count"     property="likesCount" />
+        <result column="views_count"     property="viewsCount" />
+        <result column="comments_count"  property="commentsCount" />
+        <result column="created_at"      property="createdAt" />
+    </resultMap>
+
+    <select id="selectByAuthorId" resultMap="feedPostResultMap">
+        SELECT * FROM feed_posts
+        WHERE author_id = #{authorId}
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectById" resultMap="feedPostResultMap">
+        SELECT * FROM feed_posts WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.example.back.vo.feed.FeedPostVo"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO feed_posts (place_id, author_id, caption, likes_count, views_count, comments_count)
+        VALUES (#{placeId}, #{authorId}, #{caption}, 0, 0, 0)
+    </insert>
+
+    <update id="updateCaption" parameterType="com.example.back.vo.feed.FeedPostVo">
+        UPDATE feed_posts
+        SET caption = #{caption}
+        WHERE id = #{id}
+          AND author_id = #{authorId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM feed_posts
+        WHERE id = #{id}
+          AND author_id = #{authorId}
+    </delete>
+
+</mapper>

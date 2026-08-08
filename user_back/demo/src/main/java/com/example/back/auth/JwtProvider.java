@@ -2,7 +2,6 @@ package com.example.back.auth;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.security.Key;
 
 import javax.crypto.SecretKey;
 
@@ -21,16 +20,15 @@ import lombok.extern.slf4j.Slf4j;
 public class JwtProvider {
 
     @Value("${jwt.secret-key}")
-    private String secretKey ;
-    
-    @Value("${jwt.expiration-time}")
-    private long expirationTime ;
+    private String secretKey;
 
+    @Value("${jwt.expiration-time}")
+    private long expirationTime;
 
     // 토큰 생성
     public String generateToken(Long userId, String email) {
         SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
-        
+
         Date now = new Date();
 
         Date expireDate = new Date(now.getTime() + expirationTime);
@@ -44,16 +42,15 @@ public class JwtProvider {
                 .compact();
     }
 
-
     // 토큰 검증
-    public boolean validateToken(String token){
+    public boolean validateToken(String token) {
 
-        try{
+        try {
 
             getClaims(token);
             return true;
 
-        }catch (Exception e){
+        } catch (Exception e) {
             log.error("토큰 검증 실패: {}", e.getMessage());
             return false;
 
@@ -61,40 +58,31 @@ public class JwtProvider {
 
     }
 
-
-
     // Clamis 추출
-    public Claims  getClaims(String token) {
+    public Claims getClaims(String token) {
 
         SecretKey key = Keys.hmacShaKeyFor(
-                            secretKey.getBytes(StandardCharsets.UTF_8)
-        );
+                secretKey.getBytes(StandardCharsets.UTF_8));
 
         return Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-    
+
     }
 
-
-
     // userid 추출
-    public Long getUserId(String token){
-        
+    public Long getUserId(String token) {
+
         return Long.valueOf(
-            getClaims(token).getSubject()
-    );
+                getClaims(token).getSubject());
     }
 
     // email 추출
-    public String getEmail(String token){
-        
+    public String getEmail(String token) {
+
         return getClaims(token).get("email", String.class);
     }
-
-
-
 
 }
