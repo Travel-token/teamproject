@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration>
+
+    <appender
+        name="BEHAVIOR_FILE"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <file>logs/behavior/behavior.log</file>
+
+        <rollingPolicy
+            class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+
+            <fileNamePattern>
+                logs/behavior/behavior.%d{yyyy-MM-dd}.%i.log
+            </fileNamePattern>
+
+            <!-- 파일 하나가 10MB가 되면 Rolling -->
+            <maxFileSize>10MB</maxFileSize>
+
+            <!-- 최대 30일 -->
+            <maxHistory>30</maxHistory>
+
+            <!-- 전체 로그 최대 용량 -->
+            <totalSizeCap>1GB</totalSizeCap>
+
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%msg%n</pattern>
+        </encoder>
+
+    </appender>
+
+
+    <logger
+        name="BEHAVIOR"
+        level="INFO"
+        additivity="false">
+
+        <appender-ref ref="BEHAVIOR_FILE"/>
+
+    </logger>
+
+
+</configuration>
