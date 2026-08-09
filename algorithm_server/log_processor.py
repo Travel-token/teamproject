@@ -1,7 +1,7 @@
 import json
 import os
 
-# 추천 데이터 처리 담당 클래스
+# 넘어온 로그 데이터 json으로 파싱 -> 추천에 전달
 from recommendation_service import RecommendationService
 
 

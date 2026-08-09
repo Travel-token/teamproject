@@ -2,26 +2,34 @@
 
 <configuration>
 
-    <appender
-        name="BEHAVIOR_FILE"
-        class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- 일반 Spring Boot 로그 -->
+    <appender name="CONSOLE"
+              class="ch.qos.logback.core.ConsoleAppender">
 
-        <file>logs/behavior/behavior.log</file>
+        <encoder>
+            <pattern>
+                %d{yyyy-MM-dd HH:mm:ss} %-5level [%logger] %msg%n
+            </pattern>
+        </encoder>
+
+    </appender>
+
+
+    <!-- 행동 로그 파일 -->
+    <appender name="BEHAVIOR_FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <file>logs/behavior.log</file>
 
         <rollingPolicy
-            class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
 
             <fileNamePattern>
-                logs/behavior/behavior.%d{yyyy-MM-dd}.%i.log
+                logs/behavior.%d{yyyy-MM-dd}.%i.log
             </fileNamePattern>
 
-            <!-- 파일 하나가 10MB가 되면 Rolling -->
             <maxFileSize>10MB</maxFileSize>
-
-            <!-- 최대 30일 -->
             <maxHistory>30</maxHistory>
-
-            <!-- 전체 로그 최대 용량 -->
             <totalSizeCap>1GB</totalSizeCap>
 
         </rollingPolicy>
@@ -33,14 +41,21 @@
     </appender>
 
 
-    <logger
-        name="BEHAVIOR"
-        level="INFO"
-        additivity="false">
+    <!-- BEHAVIOR 전용 Logger -->
+    <logger name="BEHAVIOR"
+            level="INFO"
+            additivity="false">
 
         <appender-ref ref="BEHAVIOR_FILE"/>
 
     </logger>
 
+
+    <!-- 일반 Spring 로그 -->
+    <root level="INFO">
+
+        <appender-ref ref="CONSOLE"/>
+
+    </root>
 
 </configuration>

@@ -6,54 +6,71 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
-@RequiredArgsConstructor
 public class BehaviorLogService {
-    private static final Logger behaviorLogger = LoggerFactory.getLogger("BEHAVIOR");
+        private static final Logger behaviorLogger = LoggerFactory.getLogger("BEHAVIOR");
 
-    // 피드 조회
-    public void feedview(Long userId, Long feedId) {
-        behaviorLogger.info(
-                createLog(
-                        userId,
-                        "FEED_VIEW",
-                        feedId));
+        // 피드 조회
+        public void feedView(Long userId, Long feedId) {
+                behaviorLogger.info(
+                                createLog(
+                                                userId,
+                                                "FEED_VIEW",
+                                                feedId));
 
-    }
+        }
 
-    // 피드 좋아요
-    public void feedLike(Long userId, Long feedId) {
-        behaviorLogger.info(
-                createLog(
-                        userId,
-                        "FEED_LIKE",
-                        feedId));
+        // 피드 좋아요
+        public void feedLike(Long userId, Long feedId) {
+                behaviorLogger.info(
+                                createLog(
+                                                userId,
+                                                "FEED_LIKE",
+                                                feedId));
 
-    }
+        }
 
-    // 피드 클릭
-    public void feedClick(Long userId, Long feedId) {
-        behaviorLogger.info(
-                createLog(
-                        userId,
-                        "FEED_CLICK",
-                        feedId));
+        // 피드 클릭
+        public void feedClick(Long userId, Long feedId) {
+                behaviorLogger.info(
+                                createLog(
+                                                userId,
+                                                "FEED_CLICK",
+                                                feedId));
 
-    }
+        }
 
-    private String createLog(
-            Long userId,
-            String event,
-            Long feedId) {
+        // 피드 생성
+        public void feedCreate(Long userId, Long feedId) {
+                behaviorLogger.info(
+                                createLog(
+                                                userId,
+                                                "FEED_CREATE",
+                                                feedId));
 
-        return String.format(
-                "{\"timestamp\":\"%s\",\"userId\":%d,\"event\":\"%s\",\"feedId\":%d}",
-                LocalDateTime.now(),
-                userId,
-                event,
-                feedId);
-    }
+        }
+
+        // 피드 수정
+        public void feedUpdate(Long userId, Long feedId) {
+                behaviorLogger.info(
+                                createLog(
+                                                userId,
+                                                "FEED_UPDATE",
+                                                feedId));
+
+        }
+
+        private String createLog(
+                        Long userId,
+                        String event,
+                        Long feedId) {
+
+                return String.format(
+                                "{\"timestamp\":\"%s\",\"userId\":%d,\"event\":\"%s\",\"feedId\":%d}",
+                                LocalDateTime.now(),
+                                userId,
+                                event,
+                                feedId);
+        }
 
 }

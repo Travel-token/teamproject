@@ -25,7 +25,6 @@ class RecommendationService:
                     indent=2
                 )
 
-
     # ========================================================
     # 로그인 사용자 등록
     # ========================================================
@@ -54,7 +53,6 @@ class RecommendationService:
                 f"[USER EXISTS] userId={user_id}"
             )
 
-
     # ========================================================
     # 행동 이벤트 처리
     # ========================================================
@@ -73,11 +71,6 @@ class RecommendationService:
             f"event={event_type}"
         )
 
-        # ================================================
-        # TODO
-        # 실제 추천 데이터 업데이트
-        # ================================================
-
         if event_type == "FEED_VIEW":
 
             self.process_feed_view(event)
@@ -90,6 +83,25 @@ class RecommendationService:
 
             self.process_feed_click(event)
 
+        elif event_type == "FEED_CREATE":
+
+            self.process_feed_create(event)
+
+        elif event_type == "FEED_UPDATE":
+
+            self.process_feed_update(event)
+
+        else:
+
+            print(
+                f"[UNKNOWN EVENT] "
+                f"userId={user_id}, "
+                f"event={event_type}"
+            )
+
+    # ========================================================
+    # 피드 조회
+    # ========================================================
 
     def process_feed_view(self, event):
 
@@ -103,9 +115,12 @@ class RecommendationService:
         )
 
         # TODO
-        # 사용자 행동 데이터를 저장
+        # 사용자 행동 데이터 저장
         # 추천 Feature 업데이트
 
+    # ========================================================
+    # 피드 좋아요
+    # ========================================================
 
     def process_feed_like(self, event):
 
@@ -121,6 +136,9 @@ class RecommendationService:
         # TODO
         # 좋아요 기반 Feature 업데이트
 
+    # ========================================================
+    # 피드 클릭
+    # ========================================================
 
     def process_feed_click(self, event):
 
@@ -136,9 +154,46 @@ class RecommendationService:
         # TODO
         # 클릭 기반 Feature 업데이트
 
+    # ========================================================
+    # 피드 생성
+    # ========================================================
+
+    def process_feed_create(self, event):
+
+        user_id = event.get("userId")
+        feed_id = event.get("feedId")
+
+        print(
+            f"[FEED CREATE] "
+            f"userId={user_id}, "
+            f"feedId={feed_id}"
+        )
+
+        # TODO
+        # 사용자가 어떤 유형의 피드를 생성했는지
+        # 추천 Feature에 반영
 
     # ========================================================
-    # 추천 (알고리즘으로 교체 해야함)
+    # 피드 수정
+    # ========================================================
+
+    def process_feed_update(self, event):
+
+        user_id = event.get("userId")
+        feed_id = event.get("feedId")
+
+        print(
+            f"[FEED UPDATE] "
+            f"userId={user_id}, "
+            f"feedId={feed_id}"
+        )
+
+        # TODO
+        # 피드 수정 자체는 추천 행동 점수에
+        # 직접적으로 반영하지 않을 수도 있음
+
+    # ========================================================
+    # 추천
     # ========================================================
 
     def recommend(self, user_id):
@@ -150,7 +205,6 @@ class RecommendationService:
         # result = recommendation_algorithm(user_id)
         # ====================================================
 
-        # 임시 결과
         return [
             {
                 "feedId": 381,
@@ -166,7 +220,6 @@ class RecommendationService:
             }
         ]
 
-
     # ========================================================
     # 사용자 데이터 읽기
     # ========================================================
@@ -180,7 +233,6 @@ class RecommendationService:
         ) as file:
 
             return json.load(file)
-
 
     # ========================================================
     # 사용자 데이터 저장

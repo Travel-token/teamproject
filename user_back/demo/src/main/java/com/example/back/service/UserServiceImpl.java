@@ -13,6 +13,7 @@ import com.example.back.vo.feed.FeedPostPhotoVo;
 import com.example.back.vo.feed.FeedPostVo;
 import com.example.back.vo.user.UserSettingsVo;
 import com.example.back.vo.user.UserVo;
+import com.example.back.common.logger.BehaviorLogService;
 import com.example.back.dto.CategoryExpenseStat;
 import com.example.back.dto.ExpenseStatsResponse;
 import com.example.back.dto.FeedCreateRequest;
@@ -35,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class UserServiceImpl implements UserService {
 
+    // db 연결 mapper 들
     private final UserMapper userMapper;
     private final FeedMapper feedPostMapper;
     private final FeedPostPhotoMapper feedPostPhotoMapper;
@@ -42,6 +44,9 @@ public class UserServiceImpl implements UserService {
     private final TripMapper tripMapper;
 
     private final UserSettingsMapper userSettingsMapper;
+
+    // 로그 관련 서비스
+    private final BehaviorLogService behaviorLogService;
 
     // 로그인
     @Override
@@ -141,6 +146,11 @@ public class UserServiceImpl implements UserService {
         feedPostMapper.insert(post);
         savePhotos(post.getId(), request.getPhotoUrls());
 
+        // 피드 생성 행동 로그
+        behaviorLogService.feedCreate(
+                userId,
+                post.getId());
+
         return toDetailResponse(feedPostMapper.selectById(post.getId()));
     }
 
@@ -162,6 +172,9 @@ public class UserServiceImpl implements UserService {
             feedPostPhotoMapper.deleteByFeedPostId(feedId);
             savePhotos(feedId, request.getPhotoUrls());
         }
+
+        // 피드 수정 행동 로그
+        behaviorLogService.feedUpdate(userId, feedId);
 
         return toDetailResponse(feedPostMapper.selectById(feedId));
     }
