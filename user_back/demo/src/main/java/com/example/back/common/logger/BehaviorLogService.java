@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+// 피드 관련 행동 로그 
+
 @Service
 public class BehaviorLogService {
         private static final Logger behaviorLogger = LoggerFactory.getLogger("BEHAVIOR");
