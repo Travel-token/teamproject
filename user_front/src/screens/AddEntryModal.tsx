@@ -1,13 +1,4 @@
-/**
- * AddEntryModal.tsx
- * 지출내역 화면의 상단탭 모달 (지출 / 장소추가 / 송금)
- *
- * 담당: 권소희
- * - 지출탭: 이름·이모지·금액·결제자·참여멤버·분배(균등/직접/퍼센트)·시간·메모
- * - 송금탭: 보내는사람·받는사람·금액·시간·메모
- * - 장소탭: 기존 AddEntryModal의 장소 로직 그대로 유지 (김은채 담당)
- * - OCR(영수증 사진) 기능은 별도 구현 예정 (PaddleOCR)
- */
+
 
 import { FontAwesome6 } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -30,7 +21,7 @@ import {
 } from '../components/FormBits';
 import { useTheme } from '../theme/ThemeContext';
 import { Member } from '../types';
-import { SplitMode } from '../api/expense';
+type SplitMode = 'even' | 'manual' | 'percent';
 
 // ─────────────────────────────────────────────
 // 타입
