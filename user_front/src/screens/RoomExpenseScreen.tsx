@@ -272,32 +272,43 @@ export default function RoomExpenseScreen({ route, navigation }: Props) {
         onClose={() => setModalVisible(false)}
         members={trip.members}
         initialTab={subTab}
-        onSubmitExpense={(name, amount, payer) => {
+        // 275~304 전체를 이걸로 교체
+
+        onSubmitExpense={(value) => {
           setExpenses((prev) => [
             {
               id: `e${Date.now()}`,
-              dateLabel: grouped[0]?.[0] ?? '오늘',
-              emoji: '💳',
-              name,
-              payerName: payer,
-              splitLabel: `${trip.members.length}명 균등`,
-              amount: Number(amount) || 0,
-              myShare: Math.round((Number(amount) || 0) / trip.members.length),
+              dateLabel: value.dateLabel,
+              emoji: value.emoji,
+              name: value.name,
+              payerName: value.payerName,
+              splitLabel: value.splitMode === 'even'
+                ? `${value.participants.length}명 균등`
+                : value.splitMode === 'manual' ? '직접입력' : '퍼센트',
+              amount: Number(value.amount) || 0,
+              myShare: Math.round((Number(value.amount) || 0) / value.participants.length),
             },
             ...prev,
           ]);
           showToast('✓ 지출이 등록됐어요');
         }}
-        onSubmitPlace={(name) => {
+        onSubmitPlace={(value) => {
           setPlaceList((prev) => [
-            { id: `p${Date.now()}`, dateLabel: '오늘', emoji: '📍', name, timeLabel: '지금', withMembers: trip.members.map((m) => m.name).join(', ') },
+            { id: `p${Date.now()}`, dateLabel: '오늘', emoji: '📍', name: value.name, timeLabel: '지금', withMembers: trip.members.map((m) => m.name).join(', '), lat: 0, lng: 0 },
             ...prev,
           ]);
-          showToast('📍 장소가 추가됐어요 (지출내역 자동 반영)');
+          showToast('📍 장소가 추가됐어요');
         }}
-        onSubmitTransfer={(from, to, amount) => {
+        onSubmitTransfer={(value) => {
           setTransferList((prev) => [
-            { id: `tf${Date.now()}`, fromName: from, toName: to, dateLabel: '오늘', method: '계좌이체', amount: Number(amount) || 0 },
+            {
+              id: `tf${Date.now()}`,
+              fromName: value.fromName,
+              toName: value.toName,
+              dateLabel: value.dateLabel,
+              method: '계좌이체',
+              amount: Number(value.amount) || 0,
+            },
             ...prev,
           ]);
           showToast('💸 송금 기록이 저장됐어요');
