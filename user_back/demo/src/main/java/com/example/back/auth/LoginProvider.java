@@ -4,7 +4,8 @@ public enum LoginProvider {
     MOCK("mock"),
     GOOGLE("google"),
     KAKAO("kakao"),
-    NAVER("naver");
+    NAVER("naver"),
+    APPLE("apple") ; 
 
     private final String value ; 
 

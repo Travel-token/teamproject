@@ -16,9 +16,6 @@ import lombok.Setter;
  *  - status     : 서버가 결정한다(생성 시 ongoing).
  *  → "서버가 정할 값은 소포에 담지 않는다"가 원칙.
  *
- * [lombok]
- *  - @Setter가 필수: JSON → 객체 변환(Jackson)이 setter로 값을 채운다.
- *  - @Getter가 필수: Service가 값을 꺼내 검증하고 VO로 옮겨 담는다.
  * ============================================================
  */
 @Getter

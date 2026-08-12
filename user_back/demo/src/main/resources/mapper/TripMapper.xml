@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.back.mapper.TripMapper">
+
+    <resultMap id="tripHistoryResultMap" type="com.example.back.dto.TripHistoryResponse">
+        <id     column="trip_id"             property="tripId" />
+        <result column="name"                property="name" />
+        <result column="region"              property="region" />
+        <result column="start_date"          property="startDate" />
+        <result column="end_date"            property="endDate" />
+        <result column="status"              property="status"
+                typeHandler="com.example.back.vo.enums.TripStatus$Handler" />
+        <result column="total_expense_amount" property="totalExpenseAmount" />
+    </resultMap>
+
+    <!-- 내가 trip_members로 속한 모든 여행 + 해당 여행의 전체 지출 합계 -->
+    <select id="selectHistoryByUserId" resultMap="tripHistoryResultMap">
+        SELECT
+            t.id                              AS trip_id,
+            t.name                            AS name,
+            t.region                          AS region,
+            t.start_date                      AS start_date,
+            t.end_date                        AS end_date,
+            t.status                          AS status,
+            COALESCE(SUM(e.amount), 0)        AS total_expense_amount
+        FROM trips t
+        JOIN trip_members tm ON tm.trip_id = t.id AND tm.user_id = #{userId}
+        LEFT JOIN expenses e ON e.trip_id = t.id
+        GROUP BY t.id, t.name, t.region, t.start_date, t.end_date, t.status
+        ORDER BY t.start_date DESC
+    </select>
+
+</mapper>

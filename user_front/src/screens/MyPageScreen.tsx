@@ -17,6 +17,7 @@ import { HistoryTrip } from '../types';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import {
   fetchMyProfile,
+  updateMyProfileName,
   updateAccount,
   updateNotificationSetting,
   NotificationKey,
@@ -105,6 +106,7 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
   const [accountBank, setAccountBank] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountEditVisible, setAccountEditVisible] = useState(false);
+  const [nameEditVisible, setNameEditVisible] = useState(false);
 
   // 최초 진입 시 프로필 + 내 피드 로드
   useEffect(() => {
@@ -121,6 +123,8 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
         setNotifMarketing(profile.notifMarketing);
         setPaySync(profile.paySync);
         setMyFeeds(feeds);
+        // 서버에 저장된 다크 모드 값으로 앱 테마를 동기화
+        onToggleDark(profile.darkMode);
       } catch (e) {
         showToast('프로필을 불러오지 못했어요');
       } finally {
@@ -145,13 +149,14 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
   const editingFeed = myFeeds.find((f) => f.id === editingFeedId);
 
   const submitFeed = async (value: FeedFormValue) => {
+    const photoUrls = value.photoUrl ? [value.photoUrl] : [];
     try {
       if (feedFormMode === 'create') {
-        const created = await createMyFeed(value);
+        const created = await createMyFeed({ placeId: value.placeId, caption: value.caption, photoUrls });
         setMyFeeds((prev) => [created, ...prev]);
         showToast('📸 피드가 등록됐어요');
       } else if (editingFeedId) {
-        const updated = await updateMyFeed(editingFeedId, value);
+        const updated = await updateMyFeed(editingFeedId, { caption: value.caption, photoUrls });
         setMyFeeds((prev) => prev.map((f) => (f.id === editingFeedId ? updated : f)));
         showToast('✏️ 피드가 수정됐어요');
       }
@@ -184,6 +189,17 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
       setLocal(!value); // 실패하면 롤백
       showToast('설정 저장에 실패했어요');
     });
+  };
+
+  const onSaveName = async (nextName: string) => {
+    try {
+      await updateMyProfileName(nextName);
+      setName(nextName);
+      setNameEditVisible(false);
+      showToast('✏️ 이름이 수정됐어요');
+    } catch (e) {
+      showToast('이름 저장에 실패했어요');
+    }
   };
 
   const onSaveAccount = async (bank: string, number: string) => {
@@ -244,160 +260,206 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
 
   return (
     <>
-    <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.profileFeedRow}>
-        <View style={styles.profileCol}>
-          <View style={{ position: 'relative' }}>
-            <Avatar label={name ? name.slice(0, 1) : '나'} size={60} />
-            <Pressable
-              onPress={() => Alert.alert('프로필 수정')}
-              style={[styles.profileEditBtn, { backgroundColor: colors.bgHero, borderColor: colors.bgScreen }]}
-            >
-              <FontAwesome6 name="pen" size={8} color="#FFFFFF" />
-            </Pressable>
-          </View>
-          <Text style={[styles.profileName, { color: colors.txPrimary }]}>{name}</Text>
-          <Text style={[styles.profileHandle, { color: colors.txMuted }]}>{handle}</Text>
-        </View>
-
-        <Pressable onPress={() => setMyFeedOpen(true)} style={styles.myFeedCol}>
-          <View style={styles.myFeedLabelRow}>
-            <Text style={{ fontSize: 20 }}>📸</Text>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.txMuted }}>내 피드</Text>
-          </View>
-          <View style={styles.myFeedCountRow}>
-            <Text style={[styles.myFeedCount, { color: colors.txPrimary }]}>{myFeeds.length}</Text>
-            <View style={{ alignItems: 'flex-start', gap: 2 }}>
-              <Text style={{ fontSize: 10, color: colors.txMuted }}>❤️ {totalLikes}</Text>
-              <Text style={{ fontSize: 10, color: colors.txMuted }}>👁️ {totalViews}</Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={styles.profileFeedRow}>
+          <View style={styles.profileCol}>
+            <View style={{ position: 'relative' }}>
+              <Avatar label={name ? name.slice(0, 1) : '나'} size={60} />
+              <Pressable
+                onPress={() => setNameEditVisible(true)}
+                style={[styles.profileEditBtn, { backgroundColor: colors.bgHero, borderColor: colors.bgScreen }]}
+              >
+                <FontAwesome6 name="pen" size={8} color="#FFFFFF" />
+              </Pressable>
             </View>
+            <Text style={[styles.profileName, { color: colors.txPrimary }]}>{name}</Text>
+            <Text style={[styles.profileHandle, { color: colors.txMuted }]}>{handle}</Text>
           </View>
-        </Pressable>
-      </View>
 
-      <Pressable
-        onPress={() => Alert.alert('계좌번호 복사됨')}
-        style={[styles.accountRow, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 10, color: colors.txMuted, marginBottom: 4 }}>송금 계좌번호</Text>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.txPrimary }}>
-            {accountBank} {accountNumber}
-          </Text>
+          <Pressable onPress={() => setMyFeedOpen(true)} style={styles.myFeedCol}>
+            <View style={styles.myFeedLabelRow}>
+              <Text style={{ fontSize: 20 }}>📸</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.txMuted }}>내 피드</Text>
+            </View>
+            <View style={styles.myFeedCountRow}>
+              <Text style={[styles.myFeedCount, { color: colors.txPrimary }]}>{myFeeds.length}</Text>
+              <View style={{ alignItems: 'flex-start', gap: 2 }}>
+                <Text style={{ fontSize: 10, color: colors.txMuted }}>❤️ {totalLikes}</Text>
+                <Text style={{ fontSize: 10, color: colors.txMuted }}>👁️ {totalViews}</Text>
+              </View>
+            </View>
+          </Pressable>
         </View>
+
         <Pressable
-          onPress={() => setAccountEditVisible(true)}
-          style={[styles.editBtn, { backgroundColor: colors.bgCard2 }]}
+          onPress={() => Alert.alert('계좌번호 복사됨')}
+          style={[styles.accountRow, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}
         >
-          <FontAwesome6 name="pen" size={11} color={colors.txSecondary} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 10, color: colors.txMuted, marginBottom: 4 }}>송금 계좌번호</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.txPrimary }}>
+              {accountBank} {accountNumber}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => setAccountEditVisible(true)}
+            style={[styles.editBtn, { backgroundColor: colors.bgCard2 }]}
+          >
+            <FontAwesome6 name="pen" size={11} color={colors.txSecondary} />
+          </Pressable>
         </Pressable>
-      </Pressable>
 
-      <SettingGroup title="알림">
-        <SettingRow icon="bell" label="정산 알림" value={notifSettle} onChange={(v) => onChangeNotification('notifSettle', v, setNotifSettle)} />
-        <SettingRow icon="paper-plane" label="여행 초대 알림" value={notifInvite} onChange={(v) => onChangeNotification('notifInvite', v, setNotifInvite)} />
-        <SettingRow icon="location-dot" label="GPS 장소 추천" value={notifGps} onChange={(v) => onChangeNotification('notifGps', v, setNotifGps)} />
-        <SettingRow icon="bullhorn" label="마케팅 알림" value={notifMarketing} onChange={(v) => onChangeNotification('notifMarketing', v, setNotifMarketing)} />
-      </SettingGroup>
+        <SettingGroup title="알림">
+          <SettingRow icon="bell" label="정산 알림" value={notifSettle} onChange={(v) => onChangeNotification('notifSettle', v, setNotifSettle)} />
+          <SettingRow icon="paper-plane" label="여행 초대 알림" value={notifInvite} onChange={(v) => onChangeNotification('notifInvite', v, setNotifInvite)} />
+          <SettingRow icon="location-dot" label="GPS 장소 추천" value={notifGps} onChange={(v) => onChangeNotification('notifGps', v, setNotifGps)} />
+          <SettingRow icon="bullhorn" label="마케팅 알림" value={notifMarketing} onChange={(v) => onChangeNotification('notifMarketing', v, setNotifMarketing)} />
+        </SettingGroup>
 
-      <SettingGroup title="앱 설정">
-        <SettingRowValue icon="globe" label="언어" value="한국어" />
-        <SettingRow icon="moon" label="다크 모드" value={isDark} onChange={onToggleDark} />
-        <SettingRow icon="credit-card" label="알림·문자 결제내역 연동" value={paySync} onChange={(v) => onChangeNotification('paySync', v, setPaySync)} />
-      </SettingGroup>
+        <SettingGroup title="앱 설정">
+          <SettingRowValue icon="globe" label="언어" value="한국어" />
+          <SettingRow icon="moon" label="다크 모드" value={isDark} onChange={(v) => onChangeNotification('darkMode', v, onToggleDark)} />
+          <SettingRow icon="credit-card" label="알림·문자 결제내역 연동" value={paySync} onChange={(v) => onChangeNotification('paySync', v, setPaySync)} />
+        </SettingGroup>
 
-      <SettingGroup title="기타">
-        <SettingRowValue icon="file-lines" label="이용약관" />
-        <SettingRowValue icon="shield-halved" label="개인정보처리방침" />
-        <SettingRowValue icon="circle-info" label="버전 정보" value="v2.0.0" noChevron />
-      </SettingGroup>
+        <SettingGroup title="기타">
+          <SettingRowValue icon="file-lines" label="이용약관" />
+          <SettingRowValue icon="shield-halved" label="개인정보처리방침" />
+          <SettingRowValue icon="circle-info" label="버전 정보" value="v2.0.0" noChevron />
+        </SettingGroup>
 
-      <View style={styles.dangerRow}>
-        <Pressable onPress={onLogout}>
-          <Text style={{ fontSize: 13, color: colors.txSecondary }}>로그아웃</Text>
-        </Pressable>
-        <Text style={{ color: colors.bdCard, fontSize: 13 }}>|</Text>
-        <Pressable onPress={onWithdraw}>
-          <Text style={{ fontSize: 13, color: colors.bgDel }}>회원 탈퇴</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+        <View style={styles.dangerRow}>
+          <Pressable onPress={onLogout}>
+            <Text style={{ fontSize: 13, color: colors.txSecondary }}>로그아웃</Text>
+          </Pressable>
+          <Text style={{ color: colors.bdCard, fontSize: 13 }}>|</Text>
+          <Pressable onPress={onWithdraw}>
+            <Text style={{ fontSize: 13, color: colors.bgDel }}>회원 탈퇴</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
 
-    <MyFeedModal
-      visible={myFeedOpen}
-      onClose={() => setMyFeedOpen(false)}
-      feeds={myFeeds}
-      onCreate={openCreateFeed}
-      onEdit={openEditFeed}
-      onDelete={deleteFeed}
-    />
+      <MyFeedModal
+        visible={myFeedOpen}
+        onClose={() => setMyFeedOpen(false)}
+        feeds={myFeeds}
+        onCreate={openCreateFeed}
+        onEdit={openEditFeed}
+        onDelete={deleteFeed}
+      />
 
-    <FeedFormModal
-      visible={feedFormVisible}
-      onClose={() => setFeedFormVisible(false)}
-      mode={feedFormMode}
-      initialValue={editingFeed ? { place: editingFeed.place, caption: editingFeed.caption, emoji: editingFeed.emoji } : undefined}
-      onSubmit={submitFeed}
-    />
+      <FeedFormModal
+        visible={feedFormVisible}
+        onClose={() => setFeedFormVisible(false)}
+        mode={feedFormMode}
+        initialValue={editingFeed ? { placeId: editingFeed.placeId, caption: editingFeed.caption, photoUrl: editingFeed.photoUrls[0] ?? '' } : undefined}
+        onSubmit={submitFeed}
+      />
 
-    <AccountEditModal
-      visible={accountEditVisible}
-      onClose={() => setAccountEditVisible(false)}
-      bank={accountBank}
-      number={accountNumber}
-      onSave={onSaveAccount}
-    />
-    
+      <AccountEditModal
+        visible={accountEditVisible}
+        onClose={() => setAccountEditVisible(false)}
+        bank={accountBank}
+        number={accountNumber}
+        onSave={onSaveAccount}
+      />
+
+      <NameEditModal
+        visible={nameEditVisible}
+        onClose={() => setNameEditVisible(false)}
+        name={name}
+        onSave={onSaveName}
+      />
+
     </>
   );
 }
 
+function NameEditModal({
+  visible,
+  onClose,
+  name,
+  onSave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  name: string;
+  onSave: (name: string) => void;
+}) {
+  const [nameDraft, setNameDraft] = useState(name);
 
-  function AccountEditModal({
-    visible,
-    onClose,
-    bank,
-    number,
-    onSave,
-  }: {
-    visible: boolean;
-    onClose: () => void;
-    bank: string;
-    number: string;
-    onSave: (bank: string, number: string) => void;
-  }) {
-    const [bankDraft, setBankDraft] = useState(bank);
-    const [numberDraft, setNumberDraft] = useState(number);
+  useEffect(() => {
+    if (visible) {
+      setNameDraft(name);
+    }
+  }, [visible, name]);
 
-    useEffect(() => {
-      if (visible) {
-        setBankDraft(bank);
-        setNumberDraft(number);
-      }
-    }, [visible, bank, number]);
-
-    return (
-      <BottomSheetModal visible={visible} onClose={onClose} title="계좌번호 수정">
-        <FormRow label="은행">
-          <FormInput value={bankDraft} onChangeText={setBankDraft} placeholder="예: 카카오뱅크" />
-        </FormRow>
-        <FormRow label="계좌번호">
-          <FormInput
-            value={numberDraft}
-            onChangeText={setNumberDraft}
-            placeholder="예: 3333-04-1234567"
-            keyboardType="numbers-and-punctuation"
-          />
-        </FormRow>
-        <SubmitButton
-          label="저장하기"
-          disabled={!bankDraft.trim() || !numberDraft.trim()}
-          onPress={() => onSave(bankDraft.trim(), numberDraft.trim())}
+  return (
+    <BottomSheetModal visible={visible} onClose={onClose} title="이름 수정">
+      <FormRow label="이름">
+        <FormInput
+          value={nameDraft}
+          onChangeText={setNameDraft}
+          placeholder="예: 박찬민"
+          maxLength={50}
         />
-        <CancelButton onPress={onClose} />
-      </BottomSheetModal>
-    );
-  }
+      </FormRow>
+      <SubmitButton
+        label="저장하기"
+        disabled={!nameDraft.trim() || nameDraft.trim() === name}
+        onPress={() => onSave(nameDraft.trim())}
+      />
+      <CancelButton onPress={onClose} />
+    </BottomSheetModal>
+  );
+}
+
+
+function AccountEditModal({
+  visible,
+  onClose,
+  bank,
+  number,
+  onSave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  bank: string;
+  number: string;
+  onSave: (bank: string, number: string) => void;
+}) {
+  const [bankDraft, setBankDraft] = useState(bank);
+  const [numberDraft, setNumberDraft] = useState(number);
+
+  useEffect(() => {
+    if (visible) {
+      setBankDraft(bank);
+      setNumberDraft(number);
+    }
+  }, [visible, bank, number]);
+
+  return (
+    <BottomSheetModal visible={visible} onClose={onClose} title="계좌번호 수정">
+      <FormRow label="은행">
+        <FormInput value={bankDraft} onChangeText={setBankDraft} placeholder="예: 카카오뱅크" />
+      </FormRow>
+      <FormRow label="계좌번호">
+        <FormInput
+          value={numberDraft}
+          onChangeText={setNumberDraft}
+          placeholder="예: 3333-04-1234567"
+          keyboardType="numbers-and-punctuation"
+        />
+      </FormRow>
+      <SubmitButton
+        label="저장하기"
+        disabled={!bankDraft.trim() || !numberDraft.trim()}
+        onPress={() => onSave(bankDraft.trim(), numberDraft.trim())}
+      />
+      <CancelButton onPress={onClose} />
+    </BottomSheetModal>
+  );
+}
 
 function MyFeedModal({
   visible,
@@ -426,10 +488,10 @@ function MyFeedModal({
           {feeds.map((f) => (
             <View key={f.id} style={[styles.myFeedRow, { backgroundColor: colors.bgCard2 }]}>
               <View style={[styles.myFeedThumb, { backgroundColor: colors.bgCollage[0] }]}>
-                <Text style={{ fontSize: 22 }}>{f.emoji}</Text>
+                <Text style={{ fontSize: 22 }}>📍</Text>
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[styles.myFeedPlace, { color: colors.txPrimary }]} numberOfLines={1}>{f.place}</Text>
+                <Text style={[styles.myFeedPlace, { color: colors.txPrimary }]} numberOfLines={1}>장소 #{f.placeId}</Text>
                 <Text style={{ fontSize: 11, color: colors.txMuted, marginTop: 2 }} numberOfLines={1}>{f.caption}</Text>
                 <Text style={{ fontSize: 10, color: colors.txMuted, marginTop: 3 }}>❤️ {f.likes} · 👁️ {f.views}</Text>
               </View>

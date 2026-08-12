@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.example.back.mapper.UserSettingsMapper">
+    <resultMap id="userSettingsResultMap" type="com.example.back.vo.user.UserSettingsVo">
+    <id column="user_id" property="userId"/>
+    <result column="notif_enabled" property="notifEnabled"/>
+    <result column="gps_enabled" property="gpsEnabled"/>
+    <result column="invite_notif_enabled" property="inviteNotifEnabled"/>
+    <result column="marketing_enabled" property="marketingEnabled"/>
+    <result column="pay_sync_enabled" property="paySyncEnabled"/>
+    <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="userSettingsResultMap"> 
+        SELECT * FROM user_settings WHERE user_id = #{userId} 
+    </select>
+    
+    <!--  설정 행이 없으면 기본값(true/true/true/false/false)으로 새로 만들고, 있으면 해당 항목만 갱신  -->
+    <insert id="updateNotifSettle">
+
+        INSERT INTO user_settings (user_id, notif_enabled, gps_enabled, invite_notif_enabled, marketing_enabled, pay_sync_enabled) 
+        VALUES (#{userId}, #{value}, TRUE, TRUE, FALSE, FALSE) ON DUPLICATE KEY UPDATE notif_enabled = #{value}, updated_at = NOW()
+
+    </insert>
+
+    <insert id="updateNotifInvite">
+
+        INSERT INTO user_settings (user_id, notif_enabled, gps_enabled, invite_notif_enabled, marketing_enabled, pay_sync_enabled) 
+        VALUES (#{userId}, TRUE, TRUE, #{value}, FALSE, FALSE) ON DUPLICATE KEY UPDATE invite_notif_enabled = #{value}, updated_at = NOW()
+
+    </insert>
+
+    <insert id="updateNotifGps">
+
+        INSERT INTO user_settings (user_id, notif_enabled, gps_enabled, invite_notif_enabled, marketing_enabled, pay_sync_enabled) 
+        VALUES (#{userId}, TRUE, #{value}, TRUE, FALSE, FALSE) ON DUPLICATE KEY UPDATE gps_enabled = #{value}, updated_at = NOW() 
+
+    </insert>
+
+    <insert id="updateNotifMarketing"> 
+
+        INSERT INTO user_settings (user_id, notif_enabled, gps_enabled, invite_notif_enabled, marketing_enabled, pay_sync_enabled) 
+        VALUES (#{userId}, TRUE, TRUE, TRUE, #{value}, FALSE) ON DUPLICATE KEY UPDATE marketing_enabled = #{value}, updated_at = NOW() 
+
+    </insert>
+
+    <insert id="updatePaySync"> 
+    
+        INSERT INTO user_settings (user_id, notif_enabled, gps_enabled, invite_notif_enabled, marketing_enabled, pay_sync_enabled) 
+        VALUES (#{userId}, TRUE, TRUE, TRUE, FALSE, #{value}) ON DUPLICATE KEY UPDATE pay_sync_enabled = #{value}, updated_at = NOW()
+
+    </insert>
+
+</mapper>

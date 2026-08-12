@@ -75,4 +75,5 @@ export interface HistoryTrip {
   badge: '진행 중' | '완료';
   collage: string[];
   hidden?: boolean;
+  days?: number; // 여행 일수 (마이페이지 통계 계산용)
 }
