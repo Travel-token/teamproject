@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- ============================================================
+  PlaceLog_mapper.xml : 여행 동선(trip_place_logs) SQL 지시서
+============================================================ -->
+<mapper namespace="com.example.back.repository.PlaceLog_repository">
+
+    <insert id="insertLog" parameterType="com.example.back.vo.PlaceLog_vo"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trip_place_logs
+            (trip_id, place_id, name, memo, linked_expense_id, visited_at, detected_by_gps)
+        VALUES
+            (#{trip_id}, #{place_id}, #{name}, #{memo}, #{linked_expense_id},
+             #{visited_at}, #{detected_by_gps})
+    </insert>
+
+    <!-- 동선은 "방문한 시각" 순서가 곧 타임라인 -->
+    <select id="findByTripId" parameterType="long"
+            resultType="com.example.back.vo.PlaceLog_vo">
+        SELECT id, trip_id, place_id, name, memo, linked_expense_id,
+               visited_at, detected_by_gps, created_at
+        FROM trip_place_logs
+        WHERE trip_id = #{trip_id}
+        ORDER BY visited_at ASC
+    </select>
+
+    <delete id="deleteLog" parameterType="long">
+        DELETE FROM trip_place_logs
+        WHERE id = #{id}
+    </delete>
+
+</mapper>

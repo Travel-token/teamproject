@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- ============================================================
+  Trip_mapper.xml : 여행(trips) + 멤버(trip_members) SQL 지시서
+  공식 travel_token 스키마 기준
+============================================================ -->
+<mapper namespace="com.example.back.repository.Trip_repository">
+
+    <!-- 여행 저장. status/created_by/invite_code는 Service가 채워서 넘김 -->
+    <insert id="insertTrip" parameterType="com.example.back.vo.Trip_vo"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trips (name, region, start_date, end_date, budget,
+                           invite_code, status, created_by)
+        VALUES (#{name}, #{region}, #{start_date}, #{end_date}, #{budget},
+                #{invite_code}, #{status}, #{created_by})
+    </insert>
+
+    <select id="findById" parameterType="long"
+            resultType="com.example.back.vo.Trip_vo">
+        SELECT id, name, region, start_date, end_date, budget,
+               invite_code, status, created_by, created_at, updated_at
+        FROM trips
+        WHERE id = #{id}
+    </select>
+
+    <select id="findAll" resultType="com.example.back.vo.Trip_vo">
+        SELECT id, name, region, start_date, end_date, budget,
+               invite_code, status, created_by, created_at, updated_at
+        FROM trips
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="findByStatus" parameterType="string"
+            resultType="com.example.back.vo.Trip_vo">
+        SELECT id, name, region, start_date, end_date, budget,
+               invite_code, status, created_by, created_at, updated_at
+        FROM trips
+        WHERE status = #{status}
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 진행중(ongoing) 여행 중 최신 1건: 앱 복원용 -->
+    <select id="findActive" resultType="com.example.back.vo.Trip_vo">
+        SELECT id, name, region, start_date, end_date, budget,
+               invite_code, status, created_by, created_at, updated_at
+        FROM trips
+        WHERE status = 'ongoing'
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <!-- 여행 수정 (이름/지역/날짜/예산만. WHERE 필수!) -->
+    <update id="updateTrip" parameterType="com.example.back.vo.Trip_vo">
+        UPDATE trips
+        SET name = #{name},
+            region = #{region},
+            start_date = #{start_date},
+            end_date = #{end_date},
+            budget = #{budget}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 상태만 변경 (planned → ongoing → completed) -->
+    <update id="updateStatus">
+        UPDATE trips
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 여행 삭제: 멤버/동선/지출은 FK CASCADE로 자동 연쇄 삭제 -->
+    <delete id="deleteTrip" parameterType="long">
+        DELETE FROM trips
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 초대코드 중복 검사 (0이면 사용 가능) -->
+    <select id="countByInviteCode" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM trips
+        WHERE invite_code = #{invite_code}
+    </select>
+
+    <!-- ==================== 멤버 ==================== -->
+
+    <insert id="insertMember" parameterType="com.example.back.vo.TripMember_vo"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trip_members (trip_id, user_id, display_name, short_name, color_code, role)
+        VALUES (#{trip_id}, #{user_id}, #{display_name}, #{short_name}, #{color_code}, #{role})
+    </insert>
+
+    <select id="findMembersByTripId" parameterType="long"
+            resultType="com.example.back.vo.TripMember_vo">
+        SELECT id, trip_id, user_id, display_name, short_name, color_code, role, joined_at
+        FROM trip_members
+        WHERE trip_id = #{trip_id}
+        ORDER BY joined_at ASC
+    </select>
+
+    <delete id="deleteMember" parameterType="long">
+        DELETE FROM trip_members
+        WHERE id = #{id}
+    </delete>
+
+</mapper>
