@@ -3,7 +3,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <!-- ============================================================
-  PlaceLog_mapper.xml : 여행 동선(trip_place_logs) SQL 지시서
+  PlaceLog_mapper.xml : 여행 동선(trip_place_logs) SQL
 ============================================================ -->
 <mapper namespace="com.example.back.repository.PlaceLog_repository">
 
