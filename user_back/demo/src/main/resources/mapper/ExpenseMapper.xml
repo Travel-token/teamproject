@@ -57,7 +57,7 @@
     </insert>
 
     <!-- 지출 목록 조회 -->
-    <select id="selectExpenseList" resultType="com.example.project.dto.expense.ExpenseResponse$Item">
+    <select id="selectExpenseList" resultType="com.example.back.dto.ExpenseResponse$Item">
         SELECT
             id,
             DATE_FORMAT(spent_at, '%m월 %d일') AS dateLabel,
@@ -79,7 +79,7 @@
     </select>
 
     <!-- 지출 상세 조회 -->
-    <select id="selectExpenseDetail" resultType="com.example.project.dto.expense.ExpenseResponse$Detail">
+    <select id="selectExpenseDetail" resultType="com.example.back.dto.ExpenseResponse$Detail">
         SELECT
             id,
             name,
@@ -94,7 +94,7 @@
     </select>
 
     <!-- 분배 상세 조회 -->
-    <select id="selectSplitDetails" resultType="com.example.project.dto.expense.ExpenseResponse$SplitDetailItem">
+    <select id="selectSplitDetails" resultType="com.example.back.dto.ExpenseResponse$SplitDetailItem">
         SELECT
             member_name AS memberName,
             amount,
