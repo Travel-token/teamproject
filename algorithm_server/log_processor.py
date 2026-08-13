@@ -11,7 +11,6 @@ from recommendation_service import RecommendationService
 # 개발 환경에서는 Spring 프로젝트의 로그 폴더를
 # Python 서버가 직접 읽는 방식으로 사용할 수 있음.
 #
-# 예:
 # ../spring_server/logs/behavior/
 #
 # ├── behavior.log
