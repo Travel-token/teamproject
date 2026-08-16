@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.project.mapper.UserMapper">
+
+    <!-- 검색/필터 공통 WHERE 절 -->
+    <sql id="userWhere">
+        <where>
+            u.status != 'withdrawn'
+            <if test="cond.keyword != null and cond.keyword != ''">
+                AND (u.name LIKE CONCAT('%', #{cond.keyword}, '%')
+                     OR u.email LIKE CONCAT('%', #{cond.keyword}, '%'))
+            </if>
+            <if test="cond.status != null and cond.status != '' and cond.status != 'all'">
+                AND u.status = #{cond.status}
+            </if>
+            <if test="cond.provider != null and cond.provider != '' and cond.provider != 'all'">
+                AND u.login_provider = #{cond.provider}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectUserList" resultType="com.example.project.dto.user.UserListItemResponse">
+        SELECT
+            u.id AS id,
+            u.name AS name,
+            u.email AS email,
+            u.login_provider AS provider,
+            DATE_FORMAT(u.created_at, '%Y.%m.%d') AS joinedAt,
+            (SELECT COUNT(*) FROM trip_members tm WHERE tm.user_id = u.id) AS tripCount,
+            u.status AS status
+        FROM users u
+        <include refid="userWhere"/>
+        ORDER BY u.created_at DESC
+        LIMIT #{cond.offset}, #{cond.limit}
+    </select>
+
+    <select id="countUserList" resultType="long">
+        SELECT COUNT(*)
+        FROM users u
+        <include refid="userWhere"/>
+    </select>
+
+    <select id="existsById" resultType="int">
+        SELECT COUNT(*) FROM users WHERE id = #{id}
+    </select>
+
+    <select id="selectUserBasic" resultType="com.example.project.dto.user.UserBasicRow">
+        SELECT
+            u.id AS id,
+            u.name AS name,
+            u.email AS email,
+            u.login_provider AS provider,
+            DATE_FORMAT(u.created_at, '%Y.%m.%d') AS joinedAt,
+            u.status AS status
+        FROM users u
+        WHERE u.id = #{id}
+    </select>
+
+    <select id="countUserTrips" resultType="int">
+        SELECT COUNT(*) FROM trip_members WHERE user_id = #{id}
+    </select>
+
+    <select id="sumUserSpent" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(e.amount), 0)
+        FROM expenses e
+        JOIN trip_members tm ON e.payer_member_id = tm.id
+        WHERE tm.user_id = #{id}
+    </select>
+
+    <select id="selectUserRecentTrips" resultType="com.example.project.dto.user.UserDetailResponse$RecentTrip">
+        SELECT
+            t.id AS id,
+            t.name AS name,
+            CONCAT(DATE_FORMAT(t.start_date, '%Y.%m.%d'), ' ~ ', DATE_FORMAT(t.end_date, '%Y.%m.%d')) AS period,
+            CASE
+                WHEN latest.settlement_status IS NULL THEN 'live'
+                WHEN latest.settlement_status = 'in_progress' THEN 'settle'
+                ELSE 'done'
+            END AS status
+        FROM trip_members tm
+        JOIN trips t ON t.id = tm.trip_id
+        LEFT JOIN (
+            SELECT s1.trip_id, s1.status AS settlement_status
+            FROM settlements s1
+            INNER JOIN (
+                SELECT trip_id, MAX(created_at) AS max_created
+                FROM settlements
+                GROUP BY trip_id
+            ) s2 ON s1.trip_id = s2.trip_id AND s1.created_at = s2.max_created
+        ) latest ON latest.trip_id = t.id
+        WHERE tm.user_id = #{id}
+        ORDER BY t.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE users
+        SET status = #{status}, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

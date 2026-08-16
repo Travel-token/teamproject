@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.back.mapper.UserMapper">
+
+    <resultMap id="userResultMap" type="com.example.back.vo.user.UserVo">
+    <id column="id" property="id"/>
+    <result column="name" property="name"/>
+    <result column="email" property="email"/>
+    <result column="login_provider" property="loginProvider" typeHandler="com.example.back.vo.enums.LoginProvider$Handler"/>
+    <result column="provider_uid" property="providerUid"/>
+    <result column="profile_emoji" property="profileEmoji"/>
+    <result column="is_dark_mode" property="darkMode"/>
+    <result column="bank_name" property="bankName"/>
+    <result column="account_number" property="accountNumber"/>
+    <result column="status" property="status" typeHandler="com.example.back.vo.enums.UserStatus$Handler"/>
+    <result column="withdrawn_at" property="withdrawnAt"/>
+    <result column="created_at" property="createdAt"/>
+    <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+
+    <select id="findByEmail" resultMap="userResultMap"> 
+        SELECT * 
+        FROM users 
+        WHERE email = #{email} 
+    </select>
+
+    <select id="findByProvider" resultMap="userResultMap"> 
+        SELECT * 
+        FROM users 
+        WHERE login_provider = #{loginProvider}
+            AND provider_uid = #{providerUid} 
+    </select>
+
+    <insert id="insert" parameterType="com.example.back.vo.user.UserVo" useGeneratedKeys="true" keyProperty="id"> 
+        INSERT INTO users (name, email, login_provider, provider_uid, profile_emoji, is_dark_mode, status) 
+        VALUES ( #{name}, #{email}, #{loginProvider, typeHandler=com.example.back.vo.enums.LoginProvider$Handler}, 
+        #{providerUid}, #{profileEmoji}, #{darkMode}, #{status, typeHandler=com.example.back.vo.enums.UserStatus$Handler} ) 
+    </insert>
+
+    <update id="update" parameterType="com.example.back.vo.user.UserVo"> 
+        UPDATE users 
+        SET name = #{name}, profile_emoji = #{profileEmoji}, is_dark_mode = #{darkMode} 
+        WHERE id = #{id} 
+    </update>
+
+    <select id="findById" resultMap="userResultMap"> 
+        SELECT * 
+        FROM users 
+        WHERE id = #{id} 
+    </select>
+
+    <update id="updateName"> 
+        UPDATE users 
+        SET name = #{name} 
+        WHERE id = #{id} 
+    </update>
+
+    <update id="updateAccount"> 
+        UPDATE users 
+        SET bank_name = #{bankName}, account_number = #{accountNumber} 
+        WHERE id = #{id} 
+    </update>
+
+    <update id="updateDarkMode"> 
+        UPDATE users 
+        SET is_dark_mode = #{darkMode} 
+        WHERE id = #{id} 
+    </update>
+
+    <update id="withdraw"> 
+        UPDATE users 
+        SET status = 'withdrawn', withdrawn_at = NOW() 
+        WHERE id = #{id} 
+    </update>
+
+</mapper>

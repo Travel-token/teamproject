@@ -1,31 +1,32 @@
 {
   "expo": {
-    "name": "Travel Token",
-    "slug": "travel-token",
-    "scheme": "traveltoken",
+    "name": "여행 정산 앱",
+    "slug": "travel-settle-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/images/icon.png",
     "splash": {
-      "backgroundColor": "#7F77DD"
+      "backgroundColor": "#E8F4FD"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "kr.traveltoken.app"
+      "supportsTablet": false
     },
     "android": {
-      "package": "kr.traveltoken.app",
-      "adaptiveIcon": {
-        "backgroundColor": "#7F77DD"
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDShYCuL9Ra-ZMH9p4iR0F3b4WPN9YHJng"
+        }
       }
     },
-    "plugins": ["expo-router", "expo-secure-store"],
-    "extra": {
-      "router": {
-        "origin": false
-      }
-    }
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router"
+    ]
   }
 }

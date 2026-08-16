@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>여행 정산 · Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{
+  --primary:#1A6DC4;
+  --primary-dim:#4A90C4;
+  --primary-soft:#EBF5FC;
+  --navy:#0A2540;
+  --bg-app:#F3F8FC;
+  --bg-card:#FFFFFF;
+  --bg-card-alt:#EBF5FC;
+  --border:#E1EEF7;
+  --tx-primary:#0A2540;
+  --tx-secondary:#4A5568;
+  --tx-muted:#7FA5C4;
+  --tx-faint:#B7D2E8;
+  --success:#16A34A;
+  --success-bg:#E7F7ED;
+  --warning:#D97706;
+  --warning-bg:#FDF2E3;
+  --danger:#DC2626;
+  --danger-bg:#FCE9E9;
+  --live-bg:#E4F0FB;
+  --shadow-card:0 1px 3px rgba(10,37,64,0.06), 0 1px 2px rgba(10,37,64,0.04);
+  --shadow-pop:0 20px 50px rgba(10,37,64,0.18);
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:-apple-system,'SF Pro Display','Helvetica Neue','Pretendard',sans-serif;
+  background:var(--bg-app);
+  color:var(--tx-primary);
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--primary);color:#fff;}
+button,input,select{font-family:inherit;}
+a{color:inherit;text-decoration:none;}
+
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:100vh;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:242px;flex-shrink:0;background:var(--navy);color:#fff;
+  display:flex;flex-direction:column;padding:22px 14px;position:sticky;top:0;height:100vh;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 26px;}
+.brand-mark{
+  width:34px;height:34px;border-radius:10px;background:var(--primary);
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;
+}
+.brand-text{line-height:1.25;}
+.brand-text b{font-size:14.5px;font-weight:800;letter-spacing:-0.2px;display:block;}
+.brand-text span{font-size:10.5px;color:rgba(255,255,255,0.45);font-weight:600;letter-spacing:0.4px;}
+
+.nav-group{margin-top:6px;}
+.nav-label{font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.32);letter-spacing:0.6px;padding:14px 12px 8px;}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:10.5px 12px;border-radius:11px;
+  font-size:13.5px;font-weight:600;color:rgba(255,255,255,0.62);cursor:pointer;
+  transition:background .15s,color .15s;margin-bottom:2px;
+}
+.nav-item i{width:16px;text-align:center;font-size:14px;}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.nav-item.active{background:var(--primary);color:#fff;}
+.nav-item .badge-count{
+  margin-left:auto;background:rgba(255,255,255,0.16);font-size:10.5px;font-weight:700;
+  padding:1px 7px;border-radius:20px;
+}
+.nav-item.active .badge-count{background:rgba(255,255,255,0.28);}
+
+.sidebar-footer{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);}
+.admin-mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:11px;cursor:pointer;}
+.admin-mini:hover{background:rgba(255,255,255,0.06);}
+.admin-mini .av{width:32px;height:32px;border-radius:50 ;background:var(--primary-dim);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.admin-mini b{font-size:12.5px;display:block;}
+.admin-mini span{font-size:10.5px;color:rgba(255,255,255,0.45);}
+
+/* ── MAIN ── */
+.main{flex:1;min-width:0;}
+.topbar{
+  height:66px;background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;padding:0 28px;position:sticky;top:0;z-index:20;
+}
+.page-title{font-size:17px;font-weight:800;letter-spacing:-0.3px;}
+.page-sub{font-size:11.5px;color:var(--tx-muted);font-weight:600;margin-top:1px;}
+.topbar-search{
+  margin-left:24px;flex:1;max-width:360px;position:relative;
+}
+.topbar-search i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--tx-faint);font-size:12.5px;}
+.topbar-search input{
+  width:100%;background:var(--bg-card-alt);border:1px solid transparent;border-radius:10px;
+  padding:9px 12px 9px 34px;font-size:12.5px;color:var(--tx-primary);outline:none;
+}
+.topbar-search input:focus{border-color:var(--primary);background:#fff;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+.icon-btn{
+  width:36px;height:36px;border-radius:10px;background:var(--bg-card-alt);border:none;
+  display:flex;align-items:center;justify-content:center;color:var(--tx-secondary);cursor:pointer;position:relative;
+}
+.icon-btn .dot{position:absolute;top:8px;right:9px;width:6px;height:6px;border-radius:50%;background:var(--danger);}
+
+.content{padding:26px 28px 60px;}
+.page{display:none;}
+.page.active{display:block;animation:fadein .25s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.kpi-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow-card);
+}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.kpi-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.kpi-delta{font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.kpi-delta.up{color:var(--success);background:var(--success-bg);}
+.kpi-delta.down{color:var(--danger);background:var(--danger-bg);}
+.kpi-num{font-size:25px;font-weight:800;letter-spacing:-0.6px;font-variant-numeric:tabular-nums;}
+.kpi-label{font-size:12px;color:var(--tx-muted);font-weight:600;margin-top:3px;}
+
+/* ── PANELS ── */
+.grid-2{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-bottom:14px;align-items:stretch;}
+.panel{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px 22px;box-shadow:var(--shadow-card);
+}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.panel-title{font-size:14px;font-weight:800;}
+.panel-link{font-size:11.5px;color:var(--primary);font-weight:700;cursor:pointer;}
+
+/* bar chart */
+.bar-chart{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;}
+.bar-val{font-size:10px;color:var(--tx-muted);font-weight:700;}
+.bar{width:100%;max-width:30px;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,var(--primary) 0%,var(--primary-dim) 100%);}
+.bar-lbl{font-size:10.5px;color:var(--tx-muted);font-weight:600;}
+
+/* donut */
+.donut-wrap{display:flex;align-items:center;gap:20px;}
+.legend-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx-secondary);margin-bottom:9px;font-weight:600;}
+.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.legend-row b{margin-left:auto;color:var(--tx-primary);font-variant-numeric:tabular-nums;}
+
+/* activity list */
+.act-list{display:flex;flex-direction:column;gap:2px;}
+.act-row{display:flex;align-items:center;gap:11px;padding:9px 4px;border-radius:10px;cursor:pointer;}
+.act-row:hover{background:var(--bg-card-alt);}
+.act-av{width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.act-body{min-width:0;flex:1;}
+.act-title{font-size:12.5px;font-weight:700;color:var(--tx-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.act-sub{font-size:11px;color:var(--tx-muted);margin-top:1px;}
+.act-time{font-size:10.5px;color:var(--tx-faint);font-weight:600;flex-shrink:0;}
+
+/* ── TOOLBAR (filters) ── */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.tb-search{position:relative;}
+.tb-search i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--tx-faint);font-size:12px;}
+.tb-search input{width:230px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px 9px 32px;font-size:12.5px;outline:none;}
+.tb-search input:focus{border-color:var(--primary);}
+.tb-select{background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 30px 9px 12px;font-size:12.5px;color:var(--tx-secondary);outline:none;font-weight:600;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237FA5C4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.tb-count{margin-left:auto;font-size:12px;color:var(--tx-muted);font-weight:600;}
+.tb-count b{color:var(--tx-primary);}
+
+/* ── TABLE ── */
+.table-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-card);}
+table{width:100%;border-collapse:collapse;}
+thead th{
+  text-align:left;font-size:11px;color:var(--tx-muted);font-weight:700;letter-spacing:0.2px;
+  padding:12px 16px;background:var(--bg-card-alt);border-bottom:1px solid var(--border);white-space:nowrap;
+}
+tbody td{padding:12px 16px;font-size:12.5px;color:var(--tx-secondary);border-bottom:1px solid var(--border);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr{cursor:pointer;transition:background .12s;}
+tbody tr:hover{background:var(--bg-card-alt);}
+.cell-user{display:flex;align-items:center;gap:10px;}
+.cell-av{width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;flex-shrink:0;}
+.cell-name{font-size:12.5px;font-weight:700;color:var(--tx-primary);}
+.cell-sub{font-size:10.5px;color:var(--tx-muted);margin-top:1px;}
+.tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--bg-card-alt);color:var(--tx-secondary);white-space:nowrap;}
+.badge{font-size:10.5px;font-weight:700;padding:3.5px 10px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;}
+.badge.b-live{background:var(--live-bg);color:var(--primary);}
+.badge.b-live::before{background:var(--primary);}
+.badge.b-settle{background:var(--warning-bg);color:var(--warning);}
+.badge.b-settle::before{background:var(--warning);}
+.badge.b-done{background:var(--success-bg);color:var(--success);}
+.badge.b-done::before{background:var(--success);}
+.badge.b-active{background:var(--success-bg);color:var(--success);}
+.badge.b-active::before{background:var(--success);}
+.badge.b-blocked{background:var(--danger-bg);color:var(--danger);}
+.badge.b-blocked::before{background:var(--danger);}
+.row-actions{display:flex;gap:6px;}
+.rbtn{width:29px;height:29px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--tx-secondary);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11.5px;}
+.rbtn:hover{background:var(--bg-card-alt);color:var(--primary);}
+.rbtn.danger:hover{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-bg);}
+
+.pagination{display:flex;align-items:center;justify-content:center;gap:5px;padding:16px;}
+.pg-btn{min-width:30px;height:30px;padding:0 8px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:700;color:var(--tx-secondary);cursor:pointer;}
+.pg-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.pg-btn:disabled{opacity:.35;cursor:default;}
+
+/* ── MODAL / DRAWER ── */
+.overlay{position:fixed;inset:0;background:rgba(10,37,64,0.42);display:none;align-items:stretch;justify-content:flex-end;z-index:100;}
+.overlay.open{display:flex;}
+.drawer{
+  width:440px;max-width:92vw;background:var(--bg-app);height:100%;overflow-y:auto;box-shadow:var(--shadow-pop);
+  animation:slidein .22s ease;
+}
+@keyframes slidein{from{transform:translateX(24px);opacity:0;}to{transform:none;opacity:1;}}
+.drawer-head{
+  position:sticky;top:0;background:#fff;border-bottom:1px solid var(--border);padding:18px 22px;
+  display:flex;align-items:center;justify-content:space-between;z-index:2;
+}
+.drawer-head b{font-size:14.5px;font-weight:800;}
+.close-x{width:30px;height:30px;border-radius:9px;border:none;background:var(--bg-card-alt);color:var(--tx-secondary);cursor:pointer;font-size:13px;}
+.drawer-body{padding:22px;}
+.dr-profile{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+.dr-av{width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;flex-shrink:0;}
+.dr-name{font-size:16px;font-weight:800;}
+.dr-meta{font-size:11.5px;color:var(--tx-muted);margin-top:2px;font-weight:600;}
+.dr-section{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;}
+.dr-sec-title{font-size:11.5px;font-weight:800;color:var(--tx-muted);letter-spacing:0.3px;margin-bottom:11px;}
+.dr-row{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;padding:6px 0;}
+.dr-row span:first-child{color:var(--tx-muted);font-weight:600;}
+.dr-row span:last-child{color:var(--tx-primary);font-weight:700;}
+.dr-list-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.dr-list-item:last-child{border-bottom:none;}
+.dr-actions{display:flex;gap:8px;margin-top:16px;}
+.dr-actions button{flex:1;padding:11px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;border:none;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-danger{background:var(--danger-bg);color:var(--danger);}
+.btn-ghost{background:var(--bg-card-alt);color:var(--tx-secondary);}
+
+.member-chip-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
+.member-chip-row:last-child{border-bottom:none;}
+.mc-left{display:flex;align-items:center;gap:9px;}
+.mc-av{width:28px;height:28px;border-radius:50%;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;}
+
+.toast{
+  position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(8px);
+  background:var(--navy);color:#fff;font-size:12.5px;font-weight:600;padding:11px 20px;border-radius:12px;
+  box-shadow:var(--shadow-pop);opacity:0;pointer-events:none;transition:all .25s;z-index:999;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media (max-width:1100px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .grid-2{grid-template-columns:1fr;}
+}
+
+/* ── LOGIN ── */
+.login-screen{
+  position:fixed;inset:0;background:linear-gradient(160deg,var(--navy) 0%,#123354 60%,var(--primary) 130%);
+  display:flex;align-items:center;justify-content:center;z-index:500;
+}
+.login-card{
+  width:360px;max-width:88vw;background:#fff;border-radius:20px;padding:34px 30px 28px;
+  box-shadow:var(--shadow-pop);
+}
+.login-brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px;}
+.login-brand .brand-mark{width:44px;height:44px;border-radius:13px;font-size:19px;}
+.login-brand b{font-size:16px;font-weight:800;}
+.login-brand span{font-size:11px;color:var(--tx-muted);font-weight:700;letter-spacing:0.4px;}
+.login-field{margin-bottom:12px;}
+.login-field label{display:block;font-size:11.5px;font-weight:700;color:var(--tx-secondary);margin-bottom:6px;}
+.login-field input{
+  width:100%;background:var(--bg-card-alt);border:1.5px solid transparent;border-radius:11px;
+  padding:11px 13px;font-size:13px;outline:none;color:var(--tx-primary);
+}
+.login-field input:focus{border-color:var(--primary);background:#fff;}
+.login-error{
+  font-size:11.5px;color:var(--danger);background:var(--danger-bg);border-radius:9px;
+  padding:9px 12px;margin-bottom:12px;display:none;font-weight:600;
+}
+.login-error.show{display:block;}
+.login-submit{
+  width:100%;padding:12px;border:none;border-radius:11px;background:var(--primary);color:#fff;
+  font-size:13.5px;font-weight:800;cursor:pointer;margin-top:6px;
+}
+.login-submit:disabled{opacity:.6;cursor:default;}
+.login-hint{text-align:center;font-size:10.5px;color:var(--tx-faint);margin-top:16px;font-weight:600;}
+.hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-mark" style="background:var(--primary);"><i class="fa-solid fa-plane-departure" style="color:#fff;"></i></div>
+      <b>여행 정산 Admin</b>
+      <span>관리자 로그인</span>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <form id="login-form" onsubmit="return handleLogin(event)">
+      <div class="login-field">
+        <label>아이디</label>
+        <input type="text" id="login-username" autocomplete="username" placeholder="admin" required>
+      </div>
+      <div class="login-field">
+        <label>비밀번호</label>
+        <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="login-submit" id="login-submit-btn">로그인</button>
+    </form>
+    <div class="login-hint">관리자 계정 문의는 운영팀에게 연락해주세요</div>
+  </div>
+</div>
+
+<div class="layout hidden" id="app-layout">
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><i class="fa-solid fa-plane-departure" style="color:#fff;"></i></div>
+      <div class="brand-text"><b>여행 정산</b><span>ADMIN</span></div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">모니터링</div>
+      <div class="nav-item active" data-page="dashboard" onclick="goPage('dashboard')">
+        <i class="fa-solid fa-chart-pie"></i>대시보드
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">관리</div>
+      <div class="nav-item" data-page="users" onclick="goPage('users')">
+        <i class="fa-solid fa-users"></i>회원 관리<span class="badge-count" id="nav-user-count">0</span>
+      </div>
+      <div class="nav-item" data-page="trips" onclick="goPage('trips')">
+        <i class="fa-solid fa-suitcase-rolling"></i>여행방 · 정산<span class="badge-count" id="nav-trip-count">0</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-mini" onclick="handleLogout()" title="로그아웃">
+        <div class="av" id="admin-avatar">관</div>
+        <div><b id="admin-name-label">운영자</b><br><span id="admin-username-label">admin</span></div>
+        <i class="fa-solid fa-arrow-right-from-bracket" style="margin-left:auto;font-size:12px;color:rgba(255,255,255,0.4);"></i>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <div class="page-title" id="topbar-title">
+            대시보드
+        </div>
+        <div class="page-sub" id="topbar-sub">
+            서비스 전반 현황을 한눈에 확인하세요
+        </div>
+      </div>
+
+      <div class="topbar-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input id="global-search" placeholder="회원, 여행방 검색" onkeydown="if(event.key==='Enter')globalSearch()">
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn"><i class="fa-regular fa-bell"></i><span class="dot"></span></button>
+        <button class="icon-btn"><i class="fa-solid fa-gear"></i></button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ══════════ DASHBOARD ══════════ -->
+      <section class="page active" id="page-dashboard">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon" style="background:var(--live-bg);color:var(--primary);"><i class="fa-solid fa-users"></i></div>
+              <span class="kpi-delta" id="kpi-delta-users"></span>
+            </div>
+            <div class="kpi-num" id="kpi-total-users">-</div>
+            <div class="kpi-label">총 회원 수</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon" style="background:var(--warning-bg);color:var(--warning);"><i class="fa-solid fa-suitcase-rolling"></i></div>
+              <span class="kpi-delta" id="kpi-delta-trips"></span>
+            </div>
+            <div class="kpi-num" id="kpi-active-trips">-</div>
+            <div class="kpi-label">진행중인 여행방</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon" style="background:var(--success-bg);color:var(--success);"><i class="fa-solid fa-won-sign"></i></div>
+              <span class="kpi-delta" id="kpi-delta-settle"></span>
+            </div>
+            <div class="kpi-num" id="kpi-settle-amount">-</div>
+            <div class="kpi-label">이번 달 정산 총액</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <div class="kpi-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="fa-solid fa-user-plus"></i></div>
+              <span class="kpi-delta" id="kpi-delta-new"></span>
+            </div>
+            <div class="kpi-num" id="kpi-new-today">-</div>
+            <div class="kpi-label">오늘 신규 가입</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">최근 7일 신규 가입 추이</div>
+              </div>
+              <span class="panel-link" onclick="goPage('users')">회원 관리 보기</span>
+            </div>
+            <div class="bar-chart" id="signup-chart"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">여행방 정산 상태</div></div>
+            <div class="donut-wrap">
+              <svg width="118" height="118" viewBox="0 0 40 40" id="donut-svg"></svg>
+              <div style="flex:1;">
+                <div class="legend-row"><span class="legend-dot" style="background:var(--primary);"></span>진행중<b id="leg-live">-</b></div>
+                <div class="legend-row"><span class="legend-dot" style="background:var(--warning);"></span>정산중<b id="leg-settle">-</b></div>
+                <div class="legend-row"><span class="legend-dot" style="background:var(--success);"></span>정산완료<b id="leg-done">-</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">최근 가입 회원</div>
+              <span class="panel-link" onclick="goPage('users')">전체보기</span>
+            </div>
+            <div class="act-list" id="recent-users"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">최근 생성 여행방</div>
+              <span class="panel-link" onclick="goPage('trips')">전체보기</span>
+            </div>
+            <div class="act-list" id="recent-trips"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ USERS ══════════ -->
+      <section class="page" id="page-users">
+        <div class="toolbar">
+          <div class="tb-search"><i class="fa-solid fa-magnifying-glass"></i><input id="user-search" placeholder="닉네임, 이메일 검색" oninput="renderUsers()"></div>
+          <select class="tb-select" id="user-status-filter" onchange="renderUsers()">
+            <option value="all">전체 상태</option>
+            <option value="active">활성</option>
+            <option value="blocked">정지</option>
+          </select>
+          <select class="tb-select" id="user-provider-filter" onchange="renderUsers()">
+            <option value="all">전체 가입경로</option>
+            <option value="카카오">카카오</option>
+            <option value="구글">구글</option>
+            <option value="애플">애플</option>
+            <option value="네이버">네이버</option>
+          </select>
+          <span class="tb-count">총 <b id="user-count-label">0</b>명</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>회원</th><th>연락처</th><th>가입경로</th><th>가입일</th><th>참여 여행</th><th>상태</th><th style="text-align:right;">관리</th>
+            </tr></thead>
+            <tbody id="user-table-body"></tbody>
+          </table>
+          <div class="pagination" id="user-pagination"></div>
+        </div>
+      </section>
+
+      <!-- ══════════ TRIPS ══════════ -->
+      <section class="page" id="page-trips">
+        <div class="toolbar">
+          <div class="tb-search"><i class="fa-solid fa-magnifying-glass"></i><input id="trip-search" placeholder="여행방 이름 검색" oninput="renderTrips()"></div>
+          <select class="tb-select" id="trip-status-filter" onchange="renderTrips()">
+            <option value="all">전체 상태</option>
+            <option value="live">진행중</option>
+            <option value="settle">정산중</option>
+            <option value="done">정산완료</option>
+          </select>
+          <span class="tb-count">총 <b id="trip-count-label">0</b>개</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>여행방</th><th>인원</th><th>기간</th><th>총 지출액</th><th>정산 상태</th><th>생성일</th><th style="text-align:right;">관리</th>
+            </tr></thead>
+            <tbody id="trip-table-body"></tbody>
+          </table>
+          <div class="pagination" id="trip-pagination"></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ══ USER DRAWER ══ -->
+<div class="overlay" id="overlay-user" onclick="if(event.target===this)closeDrawer('overlay-user')">
+  <div class="drawer" id="user-drawer-content"></div>
+</div>
+
+<!-- ══ TRIP DRAWER ══ -->
+<div class="overlay" id="overlay-trip" onclick="if(event.target===this)closeDrawer('overlay-trip')">
+  <div class="drawer" id="trip-drawer-content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+// Spring Boot 백엔드 주소. 배포 시 실제 서버 도메인으로 변경하세요.
+// 만약 프론트를 다른 서버/포트에서 별도로 띄운다면 여기에 'http://localhost:8081'처럼 백엔드 주소를 넣어주세요.
+const API_BASE = 'http://localhost:8081';
+const TOKEN_KEY = 'travelsettle_admin_token';
+const ADMIN_KEY = 'travelsettle_admin_info';
+
+const PAGE_SIZE = 10;
+
+/* ═══════════════════ AUTH ═══════════════════ */
+function getToken(){ return localStorage.getItem(TOKEN_KEY); }
+function setSession(token, admin){
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(ADMIN_KEY, JSON.stringify(admin));
+}
+function clearSession(){
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(ADMIN_KEY);
+}
+function getAdminInfo(){
+  try{ return JSON.parse(localStorage.getItem(ADMIN_KEY) || 'null'); }catch(e){ return null; }
+}
+
+/** 공통 fetch 래퍼 - 인증 헤더 자동 첨부, 401이면 로그인 화면으로 되돌림 */
+async function api(path, options={}){
+  const token = getToken();
+  const headers = Object.assign({'Content-Type':'application/json'}, options.headers||{});
+  if(token) headers['Authorization'] = 'Bearer ' + token;
+
+  let res;
+  try{
+    res = await fetch(API_BASE + path, Object.assign({}, options, {headers}));
+  }catch(err){
+    showToast('서버에 연결할 수 없어요. API_BASE 설정을 확인해주세요.');
+    throw err;
+  }
+
+  if(res.status === 401){
+    clearSession();
+    showLogin('세션이 만료되었어요. 다시 로그인해주세요.');
+    throw new Error('unauthorized');
+  }
+
+  const body = await res.json().catch(()=>({}));
+  if(!res.ok || body.success === false){
+    throw new Error(body.message || '요청 처리 중 오류가 발생했어요.');
+  }
+  return body.data;
+}
+
+function showLogin(errorMsg){
+  document.getElementById('app-layout').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  const errEl = document.getElementById('login-error');
+  if(errorMsg){
+    errEl.textContent = errorMsg;
+    errEl.classList.add('show');
+  }else{
+    errEl.classList.remove('show');
+  }
+}
+
+function showApp(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-layout').classList.remove('hidden');
+  const admin = getAdminInfo();
+  if(admin){
+    document.getElementById('admin-name-label').textContent = admin.name || '운영자';
+    document.getElementById('admin-username-label').textContent = admin.username || '';
+    document.getElementById('admin-avatar').textContent = (admin.name || '관')[0];
+  }
+}
+
+async function handleLogin(event){
+  event.preventDefault();
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn = document.getElementById('login-submit-btn');
+  const errEl = document.getElementById('login-error');
+  errEl.classList.remove('show');
+  btn.disabled = true;
+  btn.textContent = '로그인 중...';
+
+  try{
+    const res = await fetch(API_BASE + '/api/admin/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.success === false){
+      throw new Error(body.message || '아이디 또는 비밀번호가 올바르지 않습니다.');
+    }
+    setSession(body.data.token, {adminId:body.data.adminId, username:body.data.username, name:body.data.name});
+    showApp();
+    await bootApp();
+  }catch(err){
+    errEl.textContent = err.message || '로그인에 실패했어요. 다시 시도해주세요.';
+    errEl.classList.add('show');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = '로그인';
+  }
+  return false;
+}
+
+function handleLogout(){
+  if(!confirm('로그아웃할까요?')) return;
+  clearSession();
+  showLogin();
+}
+
+function won(n){ return (n||0).toLocaleString('ko-KR')+'원'; }
+
+function statusBadge(status){
+  if(status==='live')return `<span class="badge b-live">진행중</span>`;
+  if(status==='settle')return `<span class="badge b-settle">정산중</span>`;
+  return `<span class="badge b-done">정산완료</span>`;
+}
+function userStatusBadge(status){
+  return status==='active' ? `<span class="badge b-active">활성</span>` : `<span class="badge b-blocked">정지</span>`;
+}
+/** 정산 참여자 상태(done/requested/pending) - 정산 시작 전이면 null */
+function memberSettleBadge(status){
+  if(status==='done') return `<span class="badge b-done">정산완료</span>`;
+  if(status==='requested') return `<span class="badge b-settle">요청중</span>`;
+  if(status==='pending') return `<span class="badge b-live" style="background:var(--bg-card-alt);color:var(--tx-muted);">대기</span>`;
+  return `<span class="badge b-live">정산 전</span>`;
+}
+
+const TITLES={
+  dashboard:['대시보드','서비스 전반 현황을 한눈에 확인하세요'],
+  users:['회원 관리','가입한 회원을 검색하고 상태를 관리하세요'],
+  trips:['여행방 · 정산 모니터링','생성된 여행방과 정산 진행 상황을 확인하세요']
+};
+function goPage(page){
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.page===page));
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('topbar-title').textContent=TITLES[page][0];
+  document.getElementById('topbar-sub').textContent=TITLES[page][1];
+}
+function globalSearch(){
+  const v=document.getElementById('global-search').value.trim();
+  if(!v)return;
+  goPage('users');
+  document.getElementById('user-search').value=v;
+  userPage=1;
+  renderUsers();
+}
+
+async function renderDashboard(){
+  let data;
+  try{
+    data = await api('/api/admin/dashboard/summary');
+  }catch(err){
+    if(err.message !== 'unauthorized') showToast(err.message);
+    return;
+  }
+
+  document.getElementById('kpi-total-users').textContent = data.totalUsers.toLocaleString();
+  document.getElementById('kpi-active-trips').textContent = data.activeTrips.toLocaleString();
+  document.getElementById('kpi-settle-amount').textContent = Math.round(data.monthlySettlementAmount/10000).toLocaleString()+'만원';
+  document.getElementById('kpi-new-today').textContent = data.newUsersToday.toLocaleString();
+
+  document.getElementById('nav-user-count').textContent = data.totalUsers;
+  document.getElementById('nav-trip-count').textContent = data.settlementStatus.live + data.settlementStatus.settle + data.settlementStatus.done;
+
+  // 7일 가입 추이 바 차트
+  const dayLabels=['월','화','수','목','금','토','일'];
+  const trend = data.signupTrend || [];
+  const counts = trend.map(t=>t.count);
+  const max = Math.max(1, ...counts);
+  document.getElementById('signup-chart').innerHTML = trend.map(t=>{
+    const d = new Date(t.date);
+    const lbl = dayLabels[(d.getDay()+6)%7];
+    return `
+    <div class="bar-col">
+      <span class="bar-val">${t.count}</span>
+      <div class="bar" style="height:${Math.max(10,(t.count/max)*110)}px;"></div>
+      <span class="bar-lbl">${lbl}</span>
+    </div>`;
+  }).join('');
+
+  // 정산 상태 도넛
+  const {live, settle, done} = data.settlementStatus;
+  const total = Math.max(1, live+settle+done);
+  document.getElementById('leg-live').textContent = live;
+  document.getElementById('leg-settle').textContent = settle;
+  document.getElementById('leg-done').textContent = done;
+  const colors=['#1A6DC4','#D97706','#16A34A'];
+  const vals=[live,settle,done];
+  let acc=0;
+  const segs=vals.map((v,i)=>{
+    const frac=v/total;
+    const seg=`<circle cx="20" cy="20" r="15.9" fill="none" stroke="${colors[i]}" stroke-width="6.5"
+      stroke-dasharray="${frac*100} ${100-frac*100}" stroke-dashoffset="${-acc*100}" transform="rotate(-90 20 20)"/>`;
+    acc+=frac;
+    return seg;
+  }).join('');
+  document.getElementById('donut-svg').innerHTML=segs;
+
+  // 최근 가입 회원
+  document.getElementById('recent-users').innerHTML=(data.recentUsers||[]).map(u=>`
+    <div class="act-row" onclick="openUserDrawer(${u.id})">
+      <div class="act-av">${u.name[0]}</div>
+      <div class="act-body">
+        <div class="act-title">${u.name}</div>
+        <div class="act-sub">${u.provider} 가입 · 여행 ${u.tripCount}회</div>
+      </div>
+      <div class="act-time">${u.joinedAt}</div>
+    </div>`).join('') || `<div style="font-size:12px;color:var(--tx-muted);padding:8px 0;">아직 가입한 회원이 없어요</div>`;
+
+  // 최근 생성 여행방
+  document.getElementById('recent-trips').innerHTML=(data.recentTrips||[]).map(t=>`
+    <div class="act-row" onclick="openTripDrawer(${t.id})">
+      <div class="act-av" style="background:var(--primary-soft);color:var(--primary);font-size:13px;">${(t.name||'').slice(0,2)}</div>
+      <div class="act-body">
+        <div class="act-title">${t.name}</div>
+        <div class="act-sub">${t.memberCount}명 참여 · ${won(t.totalAmount)}</div>
+      </div>
+      <div class="act-time">${statusBadge(t.status)}</div>
+    </div>`).join('') || `<div style="font-size:12px;color:var(--tx-muted);padding:8px 0;">아직 생성된 여행방이 없어요</div>`;
+
+
+
+  function renderDelta(elId, pct){
+    const el = document.getElementById(elId);
+    const up = pct >= 0;
+    el.className = 'kpi-delta ' + (up ? 'up' : 'down');
+    el.innerHTML = `<i class="fa-solid fa-arrow-${up?'up':'down'}"></i> ${Math.abs(pct)}%`;
+  }
+  renderDelta('kpi-delta-users', data.totalUsersDeltaPct);
+  renderDelta('kpi-delta-trips', data.activeTripsDeltaPct);
+  renderDelta('kpi-delta-settle', data.settlementAmountDeltaPct);
+  renderDelta('kpi-delta-new', data.newUsersDeltaPct);
+}
+
+/* ═══════════════════ USERS ═══════════════════ */
+let userPage=1;
+let userLastResult=null;
+
+function buildQuery(params){
+  const usp = new URLSearchParams();
+  Object.entries(params).forEach(([k,v])=>{ if(v!==undefined && v!==null && v!=='') usp.set(k,v); });
+  return usp.toString();
+}
+
+async function renderUsers(){
+  const keyword = document.getElementById('user-search').value.trim();
+  const status = document.getElementById('user-status-filter').value;
+  const provider = document.getElementById('user-provider-filter').value;
+
+  const qs = buildQuery({keyword, status, provider, page:userPage, size:PAGE_SIZE});
+
+  let page;
+  try{
+    page = await api('/api/admin/users?'+qs);
+  }catch(err){
+    if(err.message !== 'unauthorized') showToast(err.message);
+    return;
+  }
+  userLastResult = page;
+  document.getElementById('user-count-label').textContent = page.totalElements;
+
+  document.getElementById('user-table-body').innerHTML = (page.content||[]).map(u=>`
+    <tr onclick="openUserDrawer(${u.id})">
+      <td><div class="cell-user"><div class="cell-av">${u.name[0]}</div><div><div class="cell-name">${u.name}</div><div class="cell-sub">${u.email||''}</div></div></div></td>
+      <td>${u.provider}</td>
+      <td><span class="tag">${u.provider}</span></td>
+      <td>${u.joinedAt}</td>
+      <td>${u.tripCount}회</td>
+      <td>${userStatusBadge(u.status)}</td>
+      <td style="text-align:right;">
+        <div class="row-actions" style="justify-content:flex-end;" onclick="event.stopPropagation()">
+          <button class="rbtn" onclick="openUserDrawer(${u.id})" title="상세보기"><i class="fa-solid fa-eye"></i></button>
+          <button class="rbtn danger" onclick="toggleUserStatus(${u.id},'${u.status}')" title="상태변경"><i class="fa-solid ${u.status==='active'?'fa-ban':'fa-circle-check'}"></i></button>
+        </div>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--tx-muted);padding:36px;">검색 결과가 없습니다</td></tr>`;
+
+  renderPagination('user-pagination', page.page, page.totalPages, p=>{userPage=p;renderUsers();});
+}
+
+async function toggleUserStatus(id, currentStatus){
+  const next = currentStatus==='active' ? 'blocked' : 'active';
+  try{
+    await api(`/api/admin/users/${id}/status`, {method:'PATCH', body: JSON.stringify({status:next})});
+  }catch(err){
+    if(err.message !== 'unauthorized') showToast(err.message);
+    return;
+  }
+  showToast(next==='active' ? '정지를 해제했어요' : '회원을 정지 처리했어요');
+  renderUsers();
+  renderDashboard();
+  if(document.getElementById('overlay-user').classList.contains('open')) openUserDrawer(id);
+}
+
+/* ═══════════════════ TRIPS ═══════════════════ */
+let tripPage=1;
+
+async function renderTrips(){
+  const keyword = document.getElementById('trip-search').value.trim();
+  const status = document.getElementById('trip-status-filter').value;
+  const qs = buildQuery({keyword, status, page:tripPage, size:PAGE_SIZE});
+
+  let page;
+  try{
+    page = await api('/api/admin/trips?'+qs);
+  }catch(err){
+    if(err.message !== 'unauthorized') showToast(err.message);
+    return;
+  }
+  document.getElementById('trip-count-label').textContent = page.totalElements;
+
+  document.getElementById('trip-table-body').innerHTML = (page.content||[]).map(t=>`
+    <tr onclick="openTripDrawer(${t.id})">
+      <td><div class="cell-user"><div class="cell-av" style="background:var(--primary-soft);font-size:12px;">${t.name.slice(0,2)}</div><div><div class="cell-name">${t.name}</div><div class="cell-sub">방 #${1000+t.id}</div></div></div></td>
+      <td>${t.memberCount}명</td>
+      <td>${t.startDate} ~ ${t.endDate}<div class="cell-sub">${t.tripDays}일</div></td>
+      <td style="font-weight:700;color:var(--tx-primary);">${won(t.totalAmount)}</td>
+      <td>${statusBadge(t.status)}</td>
+      <td>${t.createdAt}</td>
+      <td style="text-align:right;">
+        <div class="row-actions" style="justify-content:flex-end;" onclick="event.stopPropagation()">
+          <button class="rbtn" onclick="openTripDrawer(${t.id})" title="상세보기"><i class="fa-solid fa-eye"></i></button>
+          <button class="rbtn danger" onclick="removeTrip(${t.id},'${(t.name||'').replace(/'/g,"\\'")}')" title="여행방 삭제"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--tx-muted);padding:36px;">검색 결과가 없습니다</td></tr>`;
+
+  renderPagination('trip-pagination', page.page, page.totalPages, p=>{tripPage=p;renderTrips();});
+}
+
+async function removeTrip(id, name){
+  if(!confirm(`'${name}' 여행방을 삭제할까요?`))return;
+  try{
+    await api(`/api/admin/trips/${id}`, {method:'DELETE'});
+  }catch(err){
+    if(err.message !== 'unauthorized') showToast(err.message);
+    return;
+  }
+  showToast('여행방을 삭제했어요');
+  renderTrips();
+  renderDashboard();
+  closeDrawer('overlay-trip');
+}
+
+/* ═══════════════════ PAGINATION ═══════════════════ */
+window.__pgHandlers = {};
+function renderPagination(elId,current,total,onGo){
+  window.__pgHandlers[elId]=onGo;
+  const el=document.getElementById(elId);
+  if(total<=1){el.innerHTML='';return;}
+  let html=`<button class="pg-btn" ${current===1?'disabled':''} onclick="window.__pgHandlers['${elId}'](${current-1})"><i class="fa-solid fa-chevron-left"></i></button>`;
+  for(let i=1;i<=total;i++){
+    if(total>7 && i>2 && i<total-1 && Math.abs(i-current)>1){
+      if(i===3||i===total-2) html+=`<span style="color:var(--tx-faint);padding:0 4px;">···</span>`;
+      continue;
+    }
+    html+=`<button class="pg-btn ${i===current?'active':''}" onclick="window.__pgHandlers['${elId}'](${i})">${i}</button>`;
+  }
+  html+=`<button class="pg-btn" ${current===total?'disabled':''} onclick="window.__pgHandlers['${elId}'](${current+1})"><i class="fa-solid fa-chevron-right"></i></button>`;
+  el.innerHTML=html;
+}
+
+/* ═══════════════════ USER DRAWER ═══════════════════ */
+async function openUserDrawer(id){
+  let u;
+  try{
+    u = await api(`/api/admin/users/${id}`);
+  }catch(err){
+    if(err.message !== 'unauthorized') showToast(err.message);
+    return;
+  }
+  document.getElementById('user-drawer-content').innerHTML=`
+    <div class="drawer-head"><b>회원 상세</b><button class="close-x" onclick="closeDrawer('overlay-user')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="drawer-body">
+      <div class="dr-profile">
+        <div class="dr-av">${u.name[0]}</div>
+        <div>
+          <div class="dr-name">${u.name} ${userStatusBadge(u.status)}</div>
+          <div class="dr-meta">${u.email||''} · ${u.provider} 가입</div>
+        </div>
+      </div>
+      <div class="dr-section">
+        <div class="dr-sec-title">기본 정보</div>
+        <div class="dr-row"><span>가입일</span><span>${u.joinedAt}</span></div>
+        <div class="dr-row"><span>가입 경로</span><span>${u.provider}</span></div>
+        <div class="dr-row"><span>참여 여행 수</span><span>${u.tripCount}회</span></div>
+        <div class="dr-row"><span>누적 지출액</span><span>${won(u.totalSpent)}</span></div>
+      </div>
+      <div class="dr-section">
+        <div class="dr-sec-title">최근 참여 여행방</div>
+        ${(u.recentTrips&&u.recentTrips.length)? u.recentTrips.map(t=>`
+          <div class="dr-list-item">
+            <div class="cell-av" style="background:var(--primary-soft);font-size:12px;">${t.name.slice(0,2)}</div>
+            <div style="flex:1;"><div class="cell-name">${t.name}</div><div class="cell-sub">${t.period}</div></div>
+            ${statusBadge(t.status)}
+          </div>`).join('') : `<div style="font-size:12px;color:var(--tx-muted);padding:4px 0;">참여한 여행방이 없어요</div>`}
+      </div>
+      <div class="dr-actions">
+        <button class="btn-ghost" onclick="closeDrawer('overlay-user')">닫기</button>
+        <button class="${u.status==='active'?'btn-danger':'btn-primary'}" onclick="toggleUserStatus(${u.id},'${u.status}')">${u.status==='active'?'회원 정지':'정지 해제'}</button>
+      </div>
+    </div>`;
+  openDrawer('overlay-user');
+}
+
+/* ═══════════════════ TRIP DRAWER ═══════════════════ */
+async function openTripDrawer(id){
+  let t;
+  try{
+    t = await api(`/api/admin/trips/${id}`);
+  }catch(err){
+    if(err.message !== 'unauthorized') showToast(err.message);
+    return;
+  }
+  document.getElementById('trip-drawer-content').innerHTML=`
+    <div class="drawer-head"><b>여행방 상세</b><button class="close-x" onclick="closeDrawer('overlay-trip')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="drawer-body">
+      <div class="dr-profile">
+        <div class="dr-av" style="background:var(--primary-soft);font-size:16px;">${t.name.slice(0,2)}</div>
+        <div>
+          <div class="dr-name">${t.name}</div>
+          <div class="dr-meta">방 #${1000+t.id} · ${statusBadge(t.status)}</div>
+        </div>
+      </div>
+      <div class="dr-section">
+        <div class="dr-sec-title">여행 정보</div>
+        <div class="dr-row"><span>기간</span><span>${t.startDate} ~ ${t.endDate} (${t.tripDays}일)</span></div>
+        <div class="dr-row"><span>생성일</span><span>${t.createdAt}</span></div>
+        <div class="dr-row"><span>참여 인원</span><span>${t.memberCount}명</span></div>
+        <div class="dr-row"><span>총 지출액</span><span>${won(t.totalAmount)}</span></div>
+      </div>
+      <div class="dr-section">
+        <div class="dr-sec-title">카테고리별 지출</div>
+        ${(t.categories&&t.categories.length)? t.categories.map(c=>`
+          <div class="dr-row">
+            <span>${c.label}</span><span>${won(c.amount)}</span>
+          </div>`).join('') : `<div style="font-size:12px;color:var(--tx-muted);">등록된 지출이 없어요</div>`}
+      </div>
+      <div class="dr-section">
+        <div class="dr-sec-title">참여 멤버</div>
+        ${(t.members&&t.members.length)? t.members.map(m=>`
+          <div class="member-chip-row">
+            <div class="mc-left"><div class="mc-av">${(m.shortName||m.name)[0]}</div><span style="font-size:12.5px;font-weight:600;">${m.name}</span></div>
+            ${memberSettleBadge(m.settleStatus)}
+          </div>`).join('') : `<div style="font-size:12px;color:var(--tx-muted);">참여 멤버가 없어요</div>`}
+      </div>
+      <div class="dr-actions">
+        <button class="btn-ghost" onclick="closeDrawer('overlay-trip')">닫기</button>
+        <button class="btn-danger" onclick="removeTrip(${t.id},'${(t.name||'').replace(/'/g,"\\'")}')">여행방 삭제</button>
+      </div>
+    </div>`;
+  openDrawer('overlay-trip');
+}
+
+function openDrawer(id){document.getElementById(id).classList.add('open');}
+function closeDrawer(id){document.getElementById(id).classList.remove('open');}
+
+/* ═══════════════════ TOAST ═══════════════════ */
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ═══════════════════ BOOT ═══════════════════ */
+async function bootApp(){
+  goPage('dashboard');
+  await renderDashboard();
+  await renderUsers();
+  await renderTrips();
+}
+
+(async function init(){
+  if(!getToken()){
+    showLogin();
+    return;
+  }
+  // 저장된 토큰이 아직 유효한지 확인
+  try{
+    await api('/api/admin/auth/me');
+    showApp();
+    await bootApp();
+  }catch(err){
+    clearSession();
+    showLogin();
+  }
+})();
+</script>
+</body>
+</html>
