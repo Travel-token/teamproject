@@ -54,6 +54,20 @@ def receive_logs():
     }), 200
 
 
+@app.route("/recommend/<int:user_id>", methods=["GET"])
+def get_recommendations(user_id):
+
+    print(f"[RECOMMEND] userId={user_id}")
+
+    results = recommendation_service.recommend(user_id)
+
+    return jsonify({
+        "success": True,
+        "userId": user_id,
+        "recommendations": results
+    }), 200
+
+
 if __name__ == "__main__":
 
     app.run(

@@ -1,5 +1,55 @@
 import json
+import math
 import os
+from datetime import datetime, timezone
+
+from db import get_connection
+
+
+# ============================================================
+# 추천 점수 가중치
+#
+# score = 인기도 * W_POPULARITY
+#       + 관심 카테고리 매칭 * W_CATEGORY
+#       + 관심 해시태그 매칭 * W_HASHTAG
+#       + 지역 선호도(거리) * W_REGION
+#       + 최신성 * W_RECENCY
+# ============================================================
+WEIGHT_POPULARITY = 0.35
+WEIGHT_CATEGORY = 0.25
+WEIGHT_HASHTAG = 0.15
+WEIGHT_REGION = 0.15
+WEIGHT_RECENCY = 0.10
+
+RECOMMEND_LIMIT = 10
+RECENCY_HALFLIFE_DAYS = 14
+
+
+def _haversine_km(lat1, lng1, lat2, lng2):
+
+    radius_km = 6371
+
+    d_lat = math.radians(lat2 - lat1)
+    d_lng = math.radians(lng2 - lng1)
+
+    a = (
+        math.sin(d_lat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(d_lng / 2) ** 2
+    )
+
+    return radius_km * 2 * math.asin(math.sqrt(a))
+
+
+def _normalize(values):
+
+    max_value = max(values) if values else 0
+
+    if max_value <= 0:
+        return [0.0 for _ in values]
+
+    return [value / max_value for value in values]
 
 
 class RecommendationService:
@@ -198,27 +248,215 @@ class RecommendationService:
 
     def recommend(self, user_id):
 
-        # ====================================================
-        # TODO
-        # 여기에서 실제 추천 알고리즘 실행
-        #
-        # result = recommendation_algorithm(user_id)
-        # ====================================================
+        connection = get_connection()
 
-        return [
-            {
-                "feedId": 381,
-                "score": 0.95
-            },
-            {
-                "feedId": 102,
-                "score": 0.91
-            },
-            {
-                "feedId": 205,
-                "score": 0.87
-            }
-        ]
+        try:
+            with connection.cursor() as cursor:
+
+                category_weights = self._fetch_category_weights(
+                    cursor, user_id
+                )
+
+                hashtag_weights = self._fetch_hashtag_weights(
+                    cursor, user_id
+                )
+
+                region = self._fetch_region_affinity(
+                    cursor, user_id
+                )
+
+                feeds = self._fetch_candidate_feeds(cursor)
+
+                feed_hashtags = self._fetch_feed_hashtags(
+                    cursor, [feed["feed_id"] for feed in feeds]
+                )
+
+        finally:
+            connection.close()
+
+        if not feeds:
+            return []
+
+        return self._score_feeds(
+            feeds,
+            feed_hashtags,
+            category_weights,
+            hashtag_weights,
+            region,
+        )
+
+    # ========================================================
+    # 사용자 관심 카테고리 가중치 조회
+    # ========================================================
+
+    def _fetch_category_weights(self, cursor, user_id):
+
+        cursor.execute(
+            "SELECT category, weight FROM user_interest_category "
+            "WHERE user_id = %s",
+            (user_id,),
+        )
+
+        return {row["category"]: row["weight"] for row in cursor.fetchall()}
+
+    # ========================================================
+    # 사용자 관심 해시태그 가중치 조회
+    # ========================================================
+
+    def _fetch_hashtag_weights(self, cursor, user_id):
+
+        cursor.execute(
+            "SELECT hashtag, weight FROM user_interest_hashtag "
+            "WHERE user_id = %s",
+            (user_id,),
+        )
+
+        return {row["hashtag"]: row["weight"] for row in cursor.fetchall()}
+
+    # ========================================================
+    # 사용자 지역 선호도(위경도) 조회
+    # ========================================================
+
+    def _fetch_region_affinity(self, cursor, user_id):
+
+        cursor.execute(
+            "SELECT lat, lng, weight FROM user_region_affinity "
+            "WHERE user_id = %s",
+            (user_id,),
+        )
+
+        return cursor.fetchone()
+
+    # ========================================================
+    # 추천 후보 피드 + 장소 정보 조회
+    # ========================================================
+
+    def _fetch_candidate_feeds(self, cursor):
+
+        cursor.execute(
+            "SELECT fp.id AS feed_id, fp.popularity_score, "
+            "fp.created_at, p.category, p.lat, p.lng "
+            "FROM feed_post fp "
+            "JOIN place p ON p.id = fp.place_id"
+        )
+
+        return cursor.fetchall()
+
+    # ========================================================
+    # 후보 피드들의 해시태그 조회
+    # ========================================================
+
+    def _fetch_feed_hashtags(self, cursor, feed_ids):
+
+        if not feed_ids:
+            return {}
+
+        placeholders = ", ".join(["%s"] * len(feed_ids))
+
+        cursor.execute(
+            "SELECT fpht.feed_post_id, h.tag "
+            "FROM feed_post_hashtag fpht "
+            "JOIN hashtag h ON h.id = fpht.hashtag_id "
+            f"WHERE fpht.feed_post_id IN ({placeholders})",
+            tuple(feed_ids),
+        )
+
+        feed_hashtags = {}
+
+        for row in cursor.fetchall():
+
+            feed_hashtags.setdefault(row["feed_post_id"], []).append(
+                row["tag"]
+            )
+
+        return feed_hashtags
+
+    # ========================================================
+    # 피드별 최종 추천 점수 계산
+    # ========================================================
+
+    def _score_feeds(
+        self,
+        feeds,
+        feed_hashtags,
+        category_weights,
+        hashtag_weights,
+        region,
+    ):
+
+        max_category_weight = max(
+            category_weights.values(), default=0
+        )
+
+        max_hashtag_weight = max(
+            hashtag_weights.values(), default=0
+        )
+
+        popularity_scores = _normalize(
+            [feed["popularity_score"] for feed in feeds]
+        )
+
+        now = datetime.now(timezone.utc)
+
+        results = []
+
+        for feed, popularity_score in zip(feeds, popularity_scores):
+
+            category_score = 0.0
+
+            if max_category_weight > 0 and feed["category"] in category_weights:
+                category_score = (
+                    category_weights[feed["category"]] / max_category_weight
+                )
+
+            tags = feed_hashtags.get(feed["feed_id"], [])
+
+            hashtag_score = 0.0
+
+            if max_hashtag_weight > 0 and tags:
+                hashtag_score = max(
+                    hashtag_weights.get(tag, 0) / max_hashtag_weight
+                    for tag in tags
+                )
+
+            region_score = 0.0
+
+            if region and feed["lat"] is not None and feed["lng"] is not None:
+
+                distance_km = _haversine_km(
+                    region["lat"], region["lng"], feed["lat"], feed["lng"]
+                )
+
+                region_score = (1 / (1 + distance_km / 10)) * region["weight"]
+
+            created_at = feed["created_at"]
+
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+
+            days_since_created = max(
+                (now - created_at).total_seconds() / 86400, 0
+            )
+
+            recency_score = math.exp(
+                -days_since_created / RECENCY_HALFLIFE_DAYS
+            )
+
+            score = (
+                popularity_score * WEIGHT_POPULARITY
+                + category_score * WEIGHT_CATEGORY
+                + hashtag_score * WEIGHT_HASHTAG
+                + region_score * WEIGHT_REGION
+                + recency_score * WEIGHT_RECENCY
+            )
+
+            results.append(
+                {"feedId": feed["feed_id"], "score": round(score, 4)}
+            )
+
+        results.sort(key=lambda item: item["score"], reverse=True)
+
+        return results[:RECOMMEND_LIMIT]
 
     # ========================================================
     # 사용자 데이터 읽기
