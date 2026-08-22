@@ -1,8 +1,8 @@
 import { FontAwesome6 } from '@expo/vector-icons';
-import { CompositeScreenProps } from '@react-navigation/native';
+import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -19,6 +19,8 @@ import { useTheme } from '../theme/ThemeContext';
 import { Trip } from '../types';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import NewTripModal from './NewTripModal';
+import { getLocationPermissionStatus } from '../services/devicePermissions';
+import { fetchCurrentRegionLabel } from '../services/currentRegion';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Settle'>,
@@ -30,6 +32,52 @@ export default function SettleHomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [trips, setTrips] = useState<Trip[]>(initialTrips);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // "OO시 기준" 표시용 행정구역. GPS 권한 요청 자체는 여기서 하지 않는다 —
+  // 권한 요청은 마이페이지의 GPS 토글에서만 하도록 몰아뒀고, 여기서는 이미
+  // 허용된 상태인지만 확인해서 좌표를 읽는다.
+  const [regionLabel, setRegionLabel] = useState<string | null>(null);
+  const [regionLoading, setRegionLoading] = useState(false);
+  const [gpsGranted, setGpsGranted] = useState(false);
+
+  // 마이페이지에서 GPS 권한을 껐다 켰다 할 수 있으니, 이 탭에 포커스될 때마다
+  // 권한을 다시 확인해서 최신 상태로 맞춘다.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+
+      (async () => {
+        const { status } = await getLocationPermissionStatus();
+        if (cancelled) return;
+
+        if (status !== 'granted') {
+          setGpsGranted(false);
+          setRegionLabel(null);
+          return;
+        }
+
+        setGpsGranted(true);
+        setRegionLoading(true);
+        const label = await fetchCurrentRegionLabel();
+        if (!cancelled) {
+          setRegionLabel(label);
+          setRegionLoading(false);
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  const locationLabelText = !gpsGranted
+    ? 'GPS 위치 꺼짐 · 탭해서 켜기'
+    : regionLoading
+      ? '위치 확인 중...'
+      : regionLabel
+        ? `${regionLabel} 기준`
+        : '위치를 확인할 수 없어요';
 
   const addTrip = (name: string, region: string) => {
     const newTrip: Trip = {
@@ -52,10 +100,15 @@ export default function SettleHomeScreen({ navigation }: Props) {
     <View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <View>
-          <View style={styles.locationRow}>
-            <View style={[styles.locDot, { backgroundColor: colors.txPrimary }]} />
-            <Text style={{ fontSize: 12, color: colors.txMuted }}>경주시 기준</Text>
-          </View>
+          <Pressable
+            onPress={() => {
+              if (!gpsGranted) navigation.navigate('MyPage');
+            }}
+            style={styles.locationRow}
+          >
+            <View style={[styles.locDot, { backgroundColor: gpsGranted ? colors.txPrimary : colors.txMuted }]} />
+            <Text style={{ fontSize: 12, color: colors.txMuted }}>{locationLabelText}</Text>
+          </Pressable>
           <Text style={[styles.pageTitle, { color: colors.txPrimary }]}>정산</Text>
         </View>
         <View style={styles.topRight}>

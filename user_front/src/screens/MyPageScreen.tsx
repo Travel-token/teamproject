@@ -2,9 +2,16 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { ActivityIndicator, Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  getLocationPermissionStatus,
+  requestLocationPermission,
+  getNotificationPermissionStatus,
+  requestNotificationPermission,
+  openDeviceSettings,
+} from '../services/devicePermissions';
 import Avatar from '../components/Avatar';
 import BottomSheetModal from '../components/BottomSheetModal';
 import FeedFormModal, { FeedFormValue } from '../components/FeedFormModal';
@@ -17,7 +24,6 @@ import { HistoryTrip } from '../types';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import {
   fetchMyProfile,
-  updateMyProfileName,
   updateAccount,
   updateNotificationSetting,
   NotificationKey,
@@ -106,7 +112,6 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
   const [accountBank, setAccountBank] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountEditVisible, setAccountEditVisible] = useState(false);
-  const [nameEditVisible, setNameEditVisible] = useState(false);
 
   // 최초 진입 시 프로필 + 내 피드 로드
   useEffect(() => {
@@ -133,6 +138,58 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
     })();
   }, []);
 
+  // 기기 권한이 실제로는 꺼져 있는데 서버 설정값만 켜진 상태로 남는 걸 막기 위한 최신값 참조
+  const settingsRef = useRef({ notifGps, notifSettle, notifInvite, notifMarketing });
+  useEffect(() => {
+    settingsRef.current = { notifGps, notifSettle, notifInvite, notifMarketing };
+  }, [notifGps, notifSettle, notifInvite, notifMarketing]);
+
+  // 사용자가 기기 설정 앱에서 위치/알림 권한을 직접 꺼버린 경우,
+  // 서버에 남아있는 on 값을 실제 기기 상태에 맞춰 off로 되돌린다.
+  useEffect(() => {
+    if (loading) return;
+
+    const reconcilePermissions = async () => {
+      const [loc, push] = await Promise.all([
+        getLocationPermissionStatus(),
+        getNotificationPermissionStatus(),
+      ]);
+      if (loc.error) console.error('[MyPage] 위치 권한 동기화 확인 실패:', loc.error);
+      if (push.error) console.error('[MyPage] 알림 권한 동기화 확인 실패:', push.error);
+
+      const cur = settingsRef.current;
+      const syncOff = (key: NotificationKey) =>
+        updateNotificationSetting(key, false).catch((e) =>
+          console.error(`[MyPage] ${key} 서버 동기화(off) 실패:`, e?.message ?? e),
+        );
+
+      if (loc.status !== 'granted' && cur.notifGps) {
+        setNotifGps(false);
+        syncOff('notifGps');
+      }
+      if (push.status !== 'granted') {
+        if (cur.notifSettle) {
+          setNotifSettle(false);
+          syncOff('notifSettle');
+        }
+        if (cur.notifInvite) {
+          setNotifInvite(false);
+          syncOff('notifInvite');
+        }
+        if (cur.notifMarketing) {
+          setNotifMarketing(false);
+          syncOff('notifMarketing');
+        }
+      }
+    };
+
+    reconcilePermissions();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') reconcilePermissions();
+    });
+    return () => sub.remove();
+  }, [loading]);
+
   const totalLikes = myFeeds.reduce((sum, f) => sum + f.likes, 0);
   const totalViews = myFeeds.reduce((sum, f) => sum + f.views, 0);
 
@@ -149,14 +206,13 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
   const editingFeed = myFeeds.find((f) => f.id === editingFeedId);
 
   const submitFeed = async (value: FeedFormValue) => {
-    const photoUrls = value.photoUrl ? [value.photoUrl] : [];
     try {
       if (feedFormMode === 'create') {
-        const created = await createMyFeed({ placeId: value.placeId, caption: value.caption, photoUrls });
+        const created = await createMyFeed(value);
         setMyFeeds((prev) => [created, ...prev]);
         showToast('📸 피드가 등록됐어요');
       } else if (editingFeedId) {
-        const updated = await updateMyFeed(editingFeedId, { caption: value.caption, photoUrls });
+        const updated = await updateMyFeed(editingFeedId, value);
         setMyFeeds((prev) => prev.map((f) => (f.id === editingFeedId ? updated : f)));
         showToast('✏️ 피드가 수정됐어요');
       }
@@ -183,22 +239,59 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
     ]);
   };
 
-  const onChangeNotification = (key: NotificationKey, value: boolean, setLocal: (v: boolean) => void) => {
-    setLocal(value); // 우선 화면에 바로 반영 (낙관적 업데이트)
-    updateNotificationSetting(key, value).catch(() => {
-      setLocal(!value); // 실패하면 롤백
-      showToast('설정 저장에 실패했어요');
-    });
+  // notifGps는 위치 권한, notifSettle/notifInvite/notifMarketing은 알림 권한과 연동된다.
+  // darkMode, paySync처럼 기기 권한이 필요 없는 설정은 그대로 서버에만 저장한다.
+  const requiresLocationPermission = (key: NotificationKey) => key === 'notifGps';
+  const requiresNotificationPermission = (key: NotificationKey) =>
+    key === 'notifSettle' || key === 'notifInvite' || key === 'notifMarketing';
+
+  const goToDeviceSettingsForPermission = (kind: '위치' | '알림') => {
+    // OS가 더 이상 네이티브 권한 팝업을 안 띄워주는 상태 (canAskAgain: false).
+    // 확인 얼럿으로 한 번 더 묻지 않고, 왜 이동하는지만 토스트로 짧게 알리고 바로 설정 화면으로 보낸다.
+    showToast(`${kind} 권한이 꺼져 있어요. 설정 화면으로 이동할게요.`);
+    openDeviceSettings();
   };
 
-  const onSaveName = async (nextName: string) => {
+  const onChangeNotification = async (key: NotificationKey, value: boolean, setLocal: (v: boolean) => void) => {
     try {
-      await updateMyProfileName(nextName);
-      setName(nextName);
-      setNameEditVisible(false);
-      showToast('✏️ 이름이 수정됐어요');
-    } catch (e) {
-      showToast('이름 저장에 실패했어요');
+      // 토글을 켤 때만 기기 권한을 확인한다. 끌 때는 서버 값만 내리면 된다
+      // (OS 권한 자체를 앱이 강제로 회수할 수는 없기 때문).
+      if (value) {
+        if (requiresLocationPermission(key)) {
+          const { status, canAskAgain, error } = await requestLocationPermission();
+          if (error) console.error('[MyPage] 위치 권한 요청 중 오류:', error);
+          if (status !== 'granted') {
+            if (error) showToast(`위치 권한 확인 실패: ${error}`);
+            // canAskAgain === true면 OS가 다음에 눌렀을 때 네이티브 팝업을 다시 띄워준다.
+            // 굳이 안내할 필요 없이, 그냥 다시 시도할 수 있게 조용히 끝낸다.
+            // OS가 더 이상 팝업을 안 띄워주는 상태일 때만 설정 화면으로 바로 이동한다.
+            if (!canAskAgain) goToDeviceSettingsForPermission('위치');
+            return; // 권한 없이는 켜지지 않음 (서버 값도 그대로 유지)
+          }
+        } else if (requiresNotificationPermission(key)) {
+          const { status, canAskAgain, error } = await requestNotificationPermission();
+          if (error) console.error('[MyPage] 알림 권한 요청 중 오류:', error);
+          if (status !== 'granted') {
+            if (error) showToast(`알림 권한 확인 실패: ${error}`);
+            if (!canAskAgain) goToDeviceSettingsForPermission('알림');
+            return;
+          }
+        }
+      }
+
+      setLocal(value); // 우선 화면에 바로 반영 (낙관적 업데이트)
+      try {
+        await updateNotificationSetting(key, value);
+      } catch (e: any) {
+        setLocal(!value); // 실패하면 롤백
+        console.error(`[MyPage] ${key} 서버 저장 실패:`, e?.message ?? e);
+        showToast('설정 저장에 실패했어요');
+      }
+    } catch (e: any) {
+      // 여기까지 오는 건 devicePermissions 쪽에서 예상 못한 예외가 새어나온 경우.
+      // 예전엔 이 지점에서 조용히 죽어서 "눌러도 반응 없음"처럼 보였다 — 반드시 로그+토스트로 드러낸다.
+      console.error(`[MyPage] ${key} 토글 처리 중 예상치 못한 오류:`, e?.message ?? e);
+      showToast('설정 변경 중 오류가 발생했어요');
     }
   };
 
@@ -266,7 +359,7 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
             <View style={{ position: 'relative' }}>
               <Avatar label={name ? name.slice(0, 1) : '나'} size={60} />
               <Pressable
-                onPress={() => setNameEditVisible(true)}
+                onPress={() => Alert.alert('프로필 수정')}
                 style={[styles.profileEditBtn, { backgroundColor: colors.bgHero, borderColor: colors.bgScreen }]}
               >
                 <FontAwesome6 name="pen" size={8} color="#FFFFFF" />
@@ -364,53 +457,7 @@ function MyPagePanel({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
         onSave={onSaveAccount}
       />
 
-      <NameEditModal
-        visible={nameEditVisible}
-        onClose={() => setNameEditVisible(false)}
-        name={name}
-        onSave={onSaveName}
-      />
-
     </>
-  );
-}
-
-function NameEditModal({
-  visible,
-  onClose,
-  name,
-  onSave,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  name: string;
-  onSave: (name: string) => void;
-}) {
-  const [nameDraft, setNameDraft] = useState(name);
-
-  useEffect(() => {
-    if (visible) {
-      setNameDraft(name);
-    }
-  }, [visible, name]);
-
-  return (
-    <BottomSheetModal visible={visible} onClose={onClose} title="이름 수정">
-      <FormRow label="이름">
-        <FormInput
-          value={nameDraft}
-          onChangeText={setNameDraft}
-          placeholder="예: 박찬민"
-          maxLength={50}
-        />
-      </FormRow>
-      <SubmitButton
-        label="저장하기"
-        disabled={!nameDraft.trim() || nameDraft.trim() === name}
-        onPress={() => onSave(nameDraft.trim())}
-      />
-      <CancelButton onPress={onClose} />
-    </BottomSheetModal>
   );
 }
 
@@ -488,10 +535,10 @@ function MyFeedModal({
           {feeds.map((f) => (
             <View key={f.id} style={[styles.myFeedRow, { backgroundColor: colors.bgCard2 }]}>
               <View style={[styles.myFeedThumb, { backgroundColor: colors.bgCollage[0] }]}>
-                <Text style={{ fontSize: 22 }}>📍</Text>
+                <Text style={{ fontSize: 22 }}>{f.photoUrls}</Text>
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[styles.myFeedPlace, { color: colors.txPrimary }]} numberOfLines={1}>장소 #{f.placeId}</Text>
+                <Text style={[styles.myFeedPlace, { color: colors.txPrimary }]} numberOfLines={1}>{f.placeId}</Text>
                 <Text style={{ fontSize: 11, color: colors.txMuted, marginTop: 2 }} numberOfLines={1}>{f.caption}</Text>
                 <Text style={{ fontSize: 10, color: colors.txMuted, marginTop: 3 }}>❤️ {f.likes} · 👁️ {f.views}</Text>
               </View>
