@@ -2,9 +2,8 @@ import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
-// TODO: 실제 배포 주소로 교체 (개발 중엔 PC의 로컬 IP, 예: http://192.168.0.5:8080/api)
 export const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: 'http://192.168.219.50:8080/api',
   timeout: 10000,
 });
 

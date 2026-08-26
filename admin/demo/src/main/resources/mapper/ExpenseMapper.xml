@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.project.mapper.ExpenseMapper">
+
+    <!-- 지출 추가 -->
+    <insert id="insertExpense" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO expenses (
+            trip_id, name, emoji, amount, spent_at,
+            category_code, source, payer_name, split_mode, memo
+        ) VALUES (
+            #{tripId}, #{name}, #{emoji}, #{amount}, #{spentAt},
+            #{categoryCode}, #{source}, #{payerName}, #{splitMode}, #{memo}
+        )
+    </insert>
+
+    <!-- 분배 상세 일괄 추가 -->
+    <insert id="insertSplitDetails">
+        INSERT INTO split_details (expense_id, member_name, amount, percent)
+        VALUES
+        <foreach collection="list" item="d" separator=",">
+            (#{d.expenseId}, #{d.memberName}, #{d.amount}, #{d.percent})
+        </foreach>
+    </insert>
+
+    <!-- 지출 목록 조회 -->
+    <select id="selectExpenseList" resultType="com.example.project.dto.expense.ExpenseResponse$Item">
+        SELECT
+            id,
+            DATE_FORMAT(spent_at, '%m월 %d일') AS dateLabel,
+            emoji,
+            name,
+            payer_name AS payerName,
+            CASE split_mode
+                WHEN 'even'    THEN '균등분할'
+                WHEN 'manual'  THEN '직접입력'
+                WHEN 'percent' THEN '퍼센트'
+                ELSE '균등분할'
+            END AS splitLabel,
+            amount,
+            amount AS myShare,
+            memo
+        FROM expenses
+        WHERE trip_id = #{tripId}
+        ORDER BY spent_at DESC
+    </select>
+
+    <!-- 지출 상세 조회 -->
+    <select id="selectExpenseDetail" resultType="com.example.project.dto.expense.ExpenseResponse$Detail">
+        SELECT
+            id,
+            name,
+            emoji,
+            amount,
+            payer_name AS payerName,
+            split_mode AS splitMode,
+            DATE_FORMAT(spent_at, '%m월 %d일 %H:%i') AS dateLabel,
+            memo
+        FROM expenses
+        WHERE id = #{id}
+    </select>
+
+    <!-- 분배 상세 조회 -->
+    <select id="selectSplitDetails" resultType="com.example.project.dto.expense.ExpenseResponse$SplitDetailItem">
+        SELECT
+            member_name AS memberName,
+            amount,
+            percent
+        FROM split_details
+        WHERE expense_id = #{expenseId}
+    </select>
+
+    <!-- 존재 여부 -->
+    <select id="existsById" resultType="int">
+        SELECT COUNT(1) FROM expenses WHERE id = #{id}
+    </select>
+
+    <!-- 분배 상세 삭제 -->
+    <delete id="deleteSplitDetails">
+        DELETE FROM split_details WHERE expense_id = #{expenseId}
+    </delete>
+
+    <!-- 지출 삭제 -->
+    <delete id="deleteExpense">
+        DELETE FROM expenses WHERE id = #{id}
+    </delete>
+
+</mapper>

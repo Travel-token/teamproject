@@ -12,9 +12,16 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "여행 중 주변 장소를 추천해드리기 위해 위치 정보가 필요해요."
+      }
     },
     "android": {
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDShYCuL9Ra-ZMH9p4iR0F3b4WPN9YHJng"
@@ -26,7 +33,14 @@
     },
     "plugins": [
       "expo-font",
-      "expo-router"
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "여행 중 주변 장소를 추천해드리기 위해 위치 정보가 필요해요."
+        }
+      ],
+      "expo-notifications"
     ]
   }
 }

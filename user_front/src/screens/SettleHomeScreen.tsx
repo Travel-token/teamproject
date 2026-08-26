@@ -1,8 +1,8 @@
 import { FontAwesome6 } from '@expo/vector-icons';
-import { CompositeScreenProps } from '@react-navigation/native';
+import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -15,12 +15,12 @@ import Avatar from '../components/Avatar';
 import Fab from '../components/Fab';
 import IconCircleButton from '../components/IconCircleButton';
 import { trips as initialTrips, formatWon } from '../data/mockData';
-import { fetchTrips, createTrip } from '../api/trip';
-import { useToast } from '../components/Toast';
 import { useTheme } from '../theme/ThemeContext';
 import { Trip } from '../types';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import NewTripModal from './NewTripModal';
+import { getLocationPermissionStatus } from '../services/devicePermissions';
+import { fetchCurrentRegionLabel } from '../services/currentRegion';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Settle'>,
@@ -32,80 +32,83 @@ export default function SettleHomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [trips, setTrips] = useState<Trip[]>(initialTrips);
   const [modalVisible, setModalVisible] = useState(false);
-  const { showToast } = useToast();
 
-  // [배선] 화면이 처음 뜰 때 서버에서 여행 목록을 가져온다.
-  // useEffect(..., []) = "이 화면이 처음 나타날 때 딱 한 번 실행해줘"
-  useEffect(() => {
-    (async () => {
-      try {
-        const list = await fetchTrips();
-        // 서버에 여행이 하나라도 있으면 mock 대신 진짜 데이터로 교체
-        if (list.length > 0) setTrips(list);
-      } catch (e) {
-        // 서버가 꺼져 있어도 앱이 멈추지 않도록: mock 데이터를 그대로 보여준다
-        console.warn('[trip] 목록 불러오기 실패, mock 데이터로 표시합니다');
-      }
-    })();
-  }, []);
+  // "OO시 기준" 표시용 행정구역. GPS 권한 요청 자체는 여기서 하지 않는다 —
+  // 권한 요청은 마이페이지의 GPS 토글에서만 하도록 몰아뒀고, 여기서는 이미
+  // 허용된 상태인지만 확인해서 좌표를 읽는다.
+  const [regionLabel, setRegionLabel] = useState<string | null>(null);
+  const [regionLoading, setRegionLoading] = useState(false);
+  const [gpsGranted, setGpsGranted] = useState(false);
 
-  // [배선] 여행 만들기: 화면에 먼저 반영(빠른 반응) → 서버 저장 → 진짜 번호로 교체
-  const addTrip = async (payload: {
-    name: string;
-    region: string;
-    startDate: string | null;
-    endDate: string | null;
-  }) => {
-    // 서버는 날짜가 필수라, 안 골랐으면 오늘 날짜로 채운다
-    const today = new Date().toISOString().slice(0, 10);   // "2026-08-13"
-    const startDate = payload.startDate ?? today;
-    const endDate = payload.endDate ?? startDate;
+  // 마이페이지에서 GPS 권한을 껐다 켰다 할 수 있으니, 이 탭에 포커스될 때마다
+  // 권한을 다시 확인해서 최신 상태로 맞춘다.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
 
-    // ① 낙관적 업데이트: 서버 응답을 기다리지 않고 화면에 먼저 표시
-    const tempId = `temp-${Date.now()}`;
-    const tempTrip: Trip = {
-      id: tempId,
-      name: payload.name,
-      region: payload.region,
+      (async () => {
+        const { status } = await getLocationPermissionStatus();
+        if (cancelled) return;
+
+        if (status !== 'granted') {
+          setGpsGranted(false);
+          setRegionLabel(null);
+          return;
+        }
+
+        setGpsGranted(true);
+        setRegionLoading(true);
+        const label = await fetchCurrentRegionLabel();
+        if (!cancelled) {
+          setRegionLabel(label);
+          setRegionLoading(false);
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  const locationLabelText = !gpsGranted
+    ? 'GPS 위치 꺼짐 · 탭해서 켜기'
+    : regionLoading
+      ? '위치 확인 중...'
+      : regionLabel
+        ? `${regionLabel} 기준`
+        : '위치를 확인할 수 없어요';
+
+  const addTrip = (name: string, region: string) => {
+    const newTrip: Trip = {
+      id: `trip-${Date.now()}`,
+      name,
+      region,
       emoji: '🧳',
       status: '진행 중',
-      dateLabel: '저장 중...',
+      dateLabel: '날짜 미정',
       days: 1,
       myExpense: 0,
       totalExpense: 0,
       members: [{ id: 'me', name: '나' }],
       collage: [],
     };
-    setTrips((prev) => [tempTrip, ...prev]);
-
-    // ② 서버에 저장
-    try {
-      const saved = await createTrip({
-        name: payload.name,
-        region: payload.region,
-        startDate,
-        endDate,
-        creatorName: '나',
-      });
-      // ③ 임시 카드를 서버가 준 진짜 데이터로 교체
-      setTrips((prev) => prev.map((t) => (t.id === tempId ? saved : t)));
-      showToast('여행이 만들어졌어요 ✅');
-    } catch (e) {
-      // 실패하면 임시 카드를 걷어내고 알려준다 (화면과 서버가 어긋나지 않게)
-      setTrips((prev) => prev.filter((t) => t.id !== tempId));
-      showToast('서버 저장에 실패했어요 ⚠️');
-      console.warn('[trip] 생성 실패', e);
-    }
+    setTrips((prev) => [newTrip, ...prev]);
   };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <View>
-          <View style={styles.locationRow}>
-            <View style={[styles.locDot, { backgroundColor: colors.txPrimary }]} />
-            <Text style={{ fontSize: 12, color: colors.txMuted }}>경주시 기준</Text>
-          </View>
+          <Pressable
+            onPress={() => {
+              if (!gpsGranted) navigation.navigate('MyPage');
+            }}
+            style={styles.locationRow}
+          >
+            <View style={[styles.locDot, { backgroundColor: gpsGranted ? colors.txPrimary : colors.txMuted }]} />
+            <Text style={{ fontSize: 12, color: colors.txMuted }}>{locationLabelText}</Text>
+          </Pressable>
           <Text style={[styles.pageTitle, { color: colors.txPrimary }]}>정산</Text>
         </View>
         <View style={styles.topRight}>

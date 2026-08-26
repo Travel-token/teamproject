@@ -7,9 +7,11 @@ import com.example.back.recommendation.RecommendationService;
 import com.example.back.service.UserService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
         private final UserService userService;
@@ -56,7 +58,12 @@ public class AuthServiceImpl implements AuthService {
                                 user.getEmail());
 
                 // flask 서버에 로그인한 유저 정보 전달
-                recommendationService.sendLoginUser(userId);
+                try {
+                        recommendationService.sendLoginUser(userId);
+                } catch (Exception e) {
+                        log.warn("추천 서버 실행 x");
+
+                }
 
                 return LoginResponseDto.builder()
                                 .userId(user.getId())
