@@ -28,7 +28,12 @@ export default function NewTripModal({
 }: {
   visible: boolean;
   onClose: () => void;
-  onCreate: (name: string, region: string) => void;
+  onCreate: (payload: {
+    name: string;
+    region: string;
+    startDate: string | null;
+    endDate: string | null;
+  }) => void;
 }) {
   const { colors } = useTheme();
   const [step, setStep] = useState(1);
@@ -102,7 +107,13 @@ export default function NewTripModal({
   };
 
   const create = () => {
-    onCreate(name || '새 여행', region || '미정');
+    // [배선] 입력한 날짜까지 함께 넘긴다 (서버에서 날짜가 필수값이라서)
+    onCreate({
+      name: name || '새 여행',
+      region: region || '미정',
+      startDate,
+      endDate,
+    });
     close();
   };
 

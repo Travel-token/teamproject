@@ -4,11 +4,6 @@ import com.example.back.vo.Trip_vo;
 
 import lombok.Getter;
 
-/**
- * ============================================================
- * Trip_ResponseDto : 서버가 프론트로 돌려주는 "여행" 답장 상자
- * ============================================================
- */
 @Getter
 public class Trip_ResponseDto {
 
