@@ -157,6 +157,7 @@ export default function RoomMapScreen({ route, navigation }: Props) {
         emoji={trip.emoji}
         name={trip.name}
         dateLabel={trip.dateLabel}
+        tripId={trip.id}
         onSaveTripInfo={(e, n) => {
           setTripEmoji(e);
           setTripName(n);

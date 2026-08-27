@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- ============================================================
+  FeedReco_mapper.xml : AI 피드 추천 SQL 지시서
+  대상 테이블 : feed_recommendations
+============================================================ -->
+<mapper namespace="com.example.back.repository.FeedReco_repository">
+
+
+    <resultMap id="recoResultMap" type="com.example.back.vo.recommendation.FeedRecommendationVo">
+        <id     column="id"                   property="id"/>
+        <result column="settlement_id"        property="settlementId"/>
+        <result column="trip_id"              property="tripId"/>
+        <result column="place_id"             property="placeId"/>
+        <result column="target_user_id"       property="targetUserId"/>
+        <result column="suggested_caption"    property="suggestedCaption"/>
+        <result column="status"               property="status"
+                typeHandler="com.example.back.vo.enums.RecommendationStatus$Handler"/>
+        <result column="adopted_feed_post_id" property="adoptedFeedPostId"/>
+        <result column="llm_provider"         property="llmProvider"/>
+        <result column="llm_model"            property="llmModel"/>
+        <result column="llm_request"          property="llmRequest"/>
+        <result column="llm_response"         property="llmResponse"/>
+        <result column="created_at"           property="createdAt"/>
+        <result column="responded_at"         property="respondedAt"/>
+    </resultMap>
+
+    <!-- 추천 저장. useGeneratedKeys=true → 발급된 id를 VO에 되돌려 채워준다 -->
+    <insert id="insertReco" parameterType="com.example.back.vo.recommendation.FeedRecommendationVo"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO feed_recommendations
+            (settlement_id, trip_id, place_id, target_user_id, suggested_caption,
+             status, llm_provider, llm_model, llm_request, llm_response)
+        VALUES
+            (#{settlementId}, #{tripId}, #{placeId}, #{targetUserId}, #{suggestedCaption},
+             #{status, typeHandler=com.example.back.vo.enums.RecommendationStatus$Handler},
+             #{llmProvider}, #{llmModel}, #{llmRequest}, #{llmResponse})
+    </insert>
+
+    <select id="findById" parameterType="long" resultMap="recoResultMap">
+        SELECT * FROM feed_recommendations WHERE id = #{id}
+    </select>
+
+    <!-- 사용자별 추천 목록: 최근 추천이 위로 -->
+    <select id="findByUserId" parameterType="long" resultMap="recoResultMap">
+        SELECT * FROM feed_recommendations
+        WHERE target_user_id = #{target_user_id}
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="findByTripId" parameterType="long" resultMap="recoResultMap">
+        SELECT * FROM feed_recommendations
+        WHERE trip_id = #{trip_id}
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 상태 변경 + 응답 시각 기록. WHERE 필수! -->
+    <update id="updateStatus">
+        UPDATE feed_recommendations
+        SET status = #{status},
+            adopted_feed_post_id = #{adopted_feed_post_id},
+            responded_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteReco" parameterType="long">
+        DELETE FROM feed_recommendations WHERE id = #{id}
+    </delete>
+
+</mapper>
