@@ -3,7 +3,7 @@ import axios from "axios";
 const api = axios.create({
 
     // 자신의 Spring Boot IP로 변경
-    baseURL: "http://192.168.219.50:8080",
+    baseURL: "http://172.20.10.2:8080",
 
     headers: {
         "Content-Type": "application/json",

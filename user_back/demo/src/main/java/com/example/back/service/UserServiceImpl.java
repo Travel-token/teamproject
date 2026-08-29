@@ -23,7 +23,7 @@ import com.example.back.dto.NotificationUpdateRequest;
 import com.example.back.dto.ProfileResponse;
 import com.example.back.dto.TripHistoryResponse;
 import com.example.back.mapper.ExpenseMapper;
-import com.example.back.mapper.FeedMapper;
+import com.example.back.mapper.FeedInMyPageMapper;
 import com.example.back.mapper.FeedPostPhotoMapper;
 import com.example.back.mapper.TripMapper;
 import com.example.back.mapper.UserMapper;
@@ -38,7 +38,7 @@ public class UserServiceImpl implements UserService {
 
     // db 연결 mapper 들
     private final UserMapper userMapper;
-    private final FeedMapper feedPostMapper;
+    private final FeedInMyPageMapper feedPostMapper;
     private final FeedPostPhotoMapper feedPostPhotoMapper;
     private final ExpenseMapper expenseMapper;
     private final TripMapper tripMapper;

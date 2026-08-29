@@ -1,46 +1,86 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.example.back.mapper.FeedMapper">
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.back.mapper.FeedPostMapper">
 
-    <resultMap id="feedPostResultMap" type="com.example.back.vo.feed.FeedPostVo">
-        <id     column="id"              property="id" />
-        <result column="place_id"        property="placeId" />
-        <result column="author_id"       property="authorId" />
-        <result column="caption"         property="caption" />
-        <result column="distance_km"     property="distanceKm" />
-        <result column="likes_count"     property="likesCount" />
-        <result column="views_count"     property="viewsCount" />
-        <result column="comments_count"  property="commentsCount" />
-        <result column="created_at"      property="createdAt" />
+    <resultMap id="feedPostResultMap" type="FeedPostVO">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="placeId" column="place_id"/>
+        <result property="caption" column="caption"/>
+        <result property="viewCount" column="view_count"/>
+        <result property="likeCount" column="like_count"/>
+        <result property="commentCount" column="comment_count"/>
+        <result property="popularityScore" column="popularity_score"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="placeName" column="place_name"/>
+        <result property="addr" column="addr"/>
+        <result property="category" column="category"/>
+        <result property="lat" column="lat"/>
+        <result property="lng" column="lng"/>
+        <result property="thumbnailUrl" column="thumbnail_url"/>
+        <result property="distanceKm" column="distance_km"/>
     </resultMap>
 
-    <select id="selectByAuthorId" resultMap="feedPostResultMap">
-        SELECT * FROM feed_posts
-        WHERE author_id = #{authorId}
-        ORDER BY created_at DESC
+    <sql id="feedPostSelectColumns">
+        SELECT
+            fp.id, fp.user_id, fp.place_id, fp.caption, fp.view_count, fp.like_count,
+            fp.comment_count, fp.popularity_score, fp.created_at,
+            p.name AS place_name, p.addr, p.category, p.lat, p.lng, p.thumbnail_url
+            <if test="lat != null and lng != null">
+                , (6371 * acos(
+                    cos(radians(#{lat})) * cos(radians(p.lat)) * cos(radians(p.lng) - radians(#{lng}))
+                    + sin(radians(#{lat})) * sin(radians(p.lat))
+                  )) AS distance_km
+            </if>
+        FROM feed_post fp
+        JOIN place p ON p.id = fp.place_id
+    </sql>
+
+    <select id="findAll" resultMap="feedPostResultMap">
+        <include refid="feedPostSelectColumns"/>
+        <choose>
+            <when test="sort == 'distance' and lat != null and lng != null">
+                ORDER BY distance_km ASC
+            </when>
+            <when test="sort == 'latest'">
+                ORDER BY fp.created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY fp.popularity_score DESC
+            </otherwise>
+        </choose>
     </select>
 
-    <select id="selectById" resultMap="feedPostResultMap">
-        SELECT * FROM feed_posts WHERE id = #{id}
+    <select id="findById" resultMap="feedPostResultMap">
+        <include refid="feedPostSelectColumns"/>
+        WHERE fp.id = #{id}
     </select>
 
-    <insert id="insert" parameterType="com.example.back.vo.feed.FeedPostVo"
-            useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO feed_posts (place_id, author_id, caption, likes_count, views_count, comments_count)
-        VALUES (#{placeId}, #{authorId}, #{caption}, 0, 0, 0)
+    <insert id="insert" parameterType="FeedPostVO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO feed_post (place_id, user_id, caption, view_count, like_count, comment_count, popularity_score, created_at)
+        VALUES (#{placeId}, #{userId}, #{caption}, 0, 0, 0, 0, NOW())
     </insert>
 
-    <update id="updateCaption" parameterType="com.example.back.vo.feed.FeedPostVo">
-        UPDATE feed_posts
+    <update id="update" parameterType="FeedPostVO">
+        UPDATE feed_post
         SET caption = #{caption}
         WHERE id = #{id}
-          AND author_id = #{authorId}
     </update>
 
     <delete id="deleteById">
-        DELETE FROM feed_posts
-        WHERE id = #{id}
-          AND author_id = #{authorId}
+        DELETE FROM feed_post WHERE id = #{id}
     </delete>
+
+    <update id="incrementViewCount">
+        UPDATE feed_post SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="incrementLikeCount">
+        UPDATE feed_post SET like_count = like_count + 1, popularity_score = popularity_score + 1 WHERE id = #{id}
+    </update>
+
+    <update id="decrementLikeCount">
+        UPDATE feed_post SET like_count = like_count - 1, popularity_score = popularity_score - 1 WHERE id = #{id}
+    </update>
 
 </mapper>
