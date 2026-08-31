@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.back.mapper.PlaceMapper">
 
-    <resultMap id="placeResultMap" type="PlaceVO">
+    <resultMap id="placeResultMap" type="com.example.back.vo.PlaceVO">
         <id property="id" column="id"/>
         <result property="apiContentId" column="api_content_id"/>
         <result property="name" column="name"/>
@@ -25,7 +25,7 @@
         WHERE id = #{id}
     </select>
 
-    <insert id="insert" parameterType="PlaceVO" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.example.back.vo.PlaceVO" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO place (api_content_id, name, addr, category, lat, lng, thumbnail_url)
         VALUES (#{apiContentId}, #{name}, #{addr}, #{category}, #{lat}, #{lng}, #{thumbnailUrl})
     </insert>
