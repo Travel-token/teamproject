@@ -1,7 +1,7 @@
-package com.example.travelapp.controller;
+package com.example.back.controller;
 
-import com.example.travelapp.domain.FeedPostVO;
-import com.example.travelapp.service.FeedService;
+import com.example.back.vo.FeedPostVO;
+import com.example.back.service.FeedService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

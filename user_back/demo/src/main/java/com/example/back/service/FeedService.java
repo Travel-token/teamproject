@@ -1,10 +1,10 @@
-package com.example.travelapp.service;
+package com.example.back.service;
 
-import com.example.travelapp.domain.FeedLikeMapper;
-import com.example.travelapp.domain.FeedPostMapper;
-import com.example.travelapp.domain.FeedPostVO;
-import com.example.travelapp.domain.PlaceMapper;
-import com.example.travelapp.domain.PlaceVO;
+import com.example.back.mapper.FeedLikeMapper;
+import com.example.back.mapper.FeedPostMapper;
+import com.example.back.vo.FeedPostVO;
+import com.example.back.mapper.PlaceMapper;
+import com.example.back.vo.PlaceVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

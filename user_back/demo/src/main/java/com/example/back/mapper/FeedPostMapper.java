@@ -1,7 +1,9 @@
-package com.example.travelapp.domain;
+package com.example.back.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import com.example.back.vo.FeedPostVO;
 
 import java.util.List;
 

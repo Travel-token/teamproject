@@ -1,4 +1,4 @@
-package com.example.travelapp.domain;
+package com.example.back.vo;
 
 import lombok.Getter;
 import lombok.Setter;
