@@ -53,5 +53,10 @@ public class PlaceLog_vo {
     private Integer detected_by_gps;
 
     /** 기록 생성 시각 (DB 자동) */
+    // places 조인 - 지도 표시용
+    private Double latitude;
+    private Double longitude;
+    private String place_emoji;
+
     private String created_at;
 }
