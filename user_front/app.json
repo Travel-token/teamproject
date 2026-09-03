@@ -20,13 +20,16 @@
     "android": {
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDShYCuL9Ra-ZMH9p4iR0F3b4WPN9YHJng"
         }
-      }
+      },
+      "package": "com.anonymous.travelsettleapp"
     },
     "web": {
       "bundler": "metro"

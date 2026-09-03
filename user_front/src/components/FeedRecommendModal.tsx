@@ -56,6 +56,7 @@ export default function FeedRecommendModal({ visible, onClose, onCreateFeeds, tr
         try {
             await Promise.all(checked.map((id) => updateRecommendationStatus(id, 'adopted')));
             onCreateFeeds(checked);
+            onClose();
         } catch (e) {
             console.warn('[reco] 채택 처리 실패', e);
         } finally {
@@ -98,12 +99,12 @@ export default function FeedRecommendModal({ visible, onClose, onCreateFeeds, tr
                 </View>
             )}
 
-            <View style={styles.actions}>
-                <CancelButton onPress={onClose} label="닫기" />
+            <View style={{ marginTop: 16 }}>
                 <SubmitButton
                     onPress={handleSubmit}
                     label={submitting ? '처리 중...' : `피드 ${checked.length}개 만들기`}
                 />
+                <CancelButton onPress={onClose} label="닫기" />
             </View>
         </BottomSheetModal>
     );
@@ -115,5 +116,4 @@ const styles = StyleSheet.create({
     row: { flexDirection: 'row', gap: 10, padding: 12, borderWidth: 1, borderRadius: 12 },
     check: { fontSize: 16 },
     caption: { flex: 1, fontSize: 13, lineHeight: 19 },
-    actions: { flexDirection: 'row', gap: 8, marginTop: 16 },
 });

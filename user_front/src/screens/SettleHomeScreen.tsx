@@ -2,7 +2,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { CompositeScreenProps, useFocusEffect } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -34,17 +34,20 @@ export default function SettleHomeScreen({ navigation }: Props) {
   const [trips, setTrips] = useState<Trip[]>(initialTrips);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // 최초 진입 시 서버에서 여행 목록 조회. 실패 시 mock 데이터를 유지한다.
-  useEffect(() => {
-    (async () => {
-      try {
-        const list = await fetchTrips();
-        if (list.length > 0) setTrips(list);
-      } catch (e) {
-        console.warn('[trip] 목록 조회 실패, mock 데이터로 대체', e);
-      }
-    })();
-  }, []);
+  // 화면에 진입할 때마다 서버에서 목록을 다시 조회한다.
+  // (여행방에서 삭제·종료 후 돌아왔을 때 목록을 최신 상태로 유지)
+  useFocusEffect(
+      useCallback(() => {
+        (async () => {
+          try {
+            const list = await fetchTrips();
+            setTrips(list);
+          } catch (e) {
+            console.warn('[trip] 목록 조회 실패, mock 데이터로 대체', e);
+          }
+        })();
+      }, [])
+  );
 
   // "OO시 기준" 표시용 행정구역. GPS 권한 요청 자체는 여기서 하지 않는다 —
   // 권한 요청은 마이페이지의 GPS 토글에서만 하도록 몰아뒀고, 여기서는 이미
@@ -160,7 +163,10 @@ export default function SettleHomeScreen({ navigation }: Props) {
 
         <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
           <Pressable
-              onPress={() => navigation.navigate('RoomSettle', { tripId: trips[0]?.id ?? 'jeju' })}
+              onPress={() => {
+                const target = trips.find((t) => t.status === '진행 중') ?? trips[0];
+                if (target) navigation.navigate('RoomSettle', { tripId: target.id });
+              }}
               style={[styles.oweBanner, { backgroundColor: colors.bgOwe }]}
           >
             <Text style={styles.oweEmoji}>💸</Text>

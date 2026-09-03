@@ -4,45 +4,58 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
 export default function RoomMenuDropdown({
-  visible,
-  onClose,
-  onEditTrip,
-  onEndTrip,
-}: {
+                                           visible,
+                                           onClose,
+                                           onEditTrip,
+                                           onEndTrip,
+                                           onDeleteTrip,
+                                         }: {
   visible: boolean;
   onClose: () => void;
   onEditTrip: () => void;
   onEndTrip: () => void;
+  onDeleteTrip: () => void;
 }) {
   const { colors } = useTheme();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <View style={[styles.dropdown, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
-          <Pressable
-            style={styles.item}
-            onPress={() => {
-              onClose();
-              onEditTrip();
-            }}
-          >
-            <FontAwesome6 name="pen" size={13} color={colors.txPrimary} style={{ width: 16 }} />
-            <Text style={[styles.itemText, { color: colors.txPrimary }]}>여행 정보 수정</Text>
-          </Pressable>
-          <View style={[styles.divider, { backgroundColor: colors.bdCard }]} />
-          <Pressable
-            style={styles.item}
-            onPress={() => {
-              onClose();
-              onEndTrip();
-            }}
-          >
-            <FontAwesome6 name="flag-checkered" size={13} color={colors.txPrimary} style={{ width: 16 }} />
-            <Text style={[styles.itemText, { color: colors.txPrimary }]}>여행 끝내기</Text>
-          </Pressable>
-        </View>
-      </Pressable>
-    </Modal>
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <Pressable style={styles.overlay} onPress={onClose}>
+          <View style={[styles.dropdown, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
+            <Pressable
+                style={styles.item}
+                onPress={() => {
+                  onClose();
+                  onEditTrip();
+                }}
+            >
+              <FontAwesome6 name="pen" size={13} color={colors.txPrimary} style={{ width: 16 }} />
+              <Text style={[styles.itemText, { color: colors.txPrimary }]}>여행 정보 수정</Text>
+            </Pressable>
+            <View style={[styles.divider, { backgroundColor: colors.bdCard }]} />
+            <Pressable
+                style={styles.item}
+                onPress={() => {
+                  onClose();
+                  onEndTrip();
+                }}
+            >
+              <FontAwesome6 name="flag-checkered" size={13} color={colors.txPrimary} style={{ width: 16 }} />
+              <Text style={[styles.itemText, { color: colors.txPrimary }]}>여행 끝내기</Text>
+            </Pressable>
+            <View style={[styles.divider, { backgroundColor: colors.bdCard }]} />
+            <Pressable
+                style={styles.item}
+                onPress={() => {
+                  onClose();
+                  onDeleteTrip();
+                }}
+            >
+              <FontAwesome6 name="trash" size={13} color={colors.danger} style={{ width: 16 }} />
+              <Text style={[styles.itemText, { color: colors.danger }]}>여행 삭제</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
   );
 }
 
