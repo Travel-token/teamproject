@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.back.mapper.PlaceMapper">
+
+    <resultMap id="placeResultMap" type="com.example.back.vo.PlaceVO">
+        <id property="id" column="id"/>
+        <result property="apiContentId" column="api_content_id"/>
+        <result property="name" column="name"/>
+        <result property="addr" column="addr"/>
+        <result property="category" column="category"/>
+        <result property="lat" column="lat"/>
+        <result property="lng" column="lng"/>
+        <result property="thumbnailUrl" column="thumbnail_url"/>
+    </resultMap>
+
+    <select id="findByApiContentId" parameterType="string" resultMap="placeResultMap">
+        SELECT id, api_content_id, name, addr, category, lat, lng, thumbnail_url
+        FROM place
+        WHERE api_content_id = #{apiContentId}
+    </select>
+
+    <select id="findById" parameterType="long" resultMap="placeResultMap">
+        SELECT id, api_content_id, name, addr, category, lat, lng, thumbnail_url
+        FROM place
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.example.back.vo.PlaceVO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO place (api_content_id, name, addr, category, lat, lng, thumbnail_url)
+        VALUES (#{apiContentId}, #{name}, #{addr}, #{category}, #{lat}, #{lng}, #{thumbnailUrl})
+    </insert>
+
+</mapper>
