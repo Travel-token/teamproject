@@ -37,7 +37,7 @@ import com.example.back.service.Trip_service;
 //   DELETE /api/trips/{id}/members/{mid}   멤버 강퇴/탈퇴
 // ============================================================
 @RestController
-@RequestMapping("/trips")
+@RequestMapping("/api/trips")
 public class Trip_controller {
 
     private final Trip_service tripService;

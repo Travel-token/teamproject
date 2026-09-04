@@ -10,20 +10,37 @@
     <insert id="insertLog" parameterType="com.example.back.vo.PlaceLog_vo"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO trip_place_logs
-            (trip_id, place_id, name, memo, linked_expense_id, visited_at, detected_by_gps)
+        (trip_id, place_id, name, memo, linked_expense_id, visited_at, detected_by_gps)
         VALUES
-            (#{trip_id}, #{place_id}, #{name}, #{memo}, #{linked_expense_id},
-             #{visited_at}, #{detected_by_gps})
+        (#{trip_id}, #{place_id}, #{name}, #{memo}, #{linked_expense_id},
+        #{visited_at}, #{detected_by_gps})
     </insert>
 
-    <!-- 동선은 "방문한 시각" 순서가 곧 타임라인 -->
-    <select id="findByTripId" parameterType="long"
-            resultType="com.example.back.vo.PlaceLog_vo">
-        SELECT id, trip_id, place_id, name, memo, linked_expense_id,
-               visited_at, detected_by_gps, created_at
-        FROM trip_place_logs
-        WHERE trip_id = #{trip_id}
-        ORDER BY visited_at ASC
+    <!-- map-underscore-to-camel-case 설정 영향을 받지 않도록 컬럼 매핑 명시 -->
+    <resultMap id="placeLogMap" type="com.example.back.vo.PlaceLog_vo">
+        <id     column="id"                property="id"/>
+        <result column="trip_id"           property="trip_id"/>
+        <result column="place_id"          property="place_id"/>
+        <result column="name"              property="name"/>
+        <result column="memo"              property="memo"/>
+        <result column="linked_expense_id" property="linked_expense_id"/>
+        <result column="visited_at"        property="visited_at"/>
+        <result column="detected_by_gps"   property="detected_by_gps"/>
+        <result column="created_at"        property="created_at"/>
+        <result column="latitude"          property="latitude"/>
+        <result column="longitude"         property="longitude"/>
+        <result column="place_emoji"       property="place_emoji"/>
+    </resultMap>
+
+    <!-- 동선 목록 (방문 시각순) + 지도 좌표 -->
+    <select id="findByTripId" parameterType="long" resultMap="placeLogMap">
+        SELECT l.id, l.trip_id, l.place_id, l.name, l.memo, l.linked_expense_id,
+        l.visited_at, l.detected_by_gps, l.created_at,
+        p.latitude, p.longitude, p.emoji AS place_emoji
+        FROM trip_place_logs l
+        LEFT JOIN places p ON p.id = l.place_id
+        WHERE l.trip_id = #{trip_id}
+        ORDER BY l.visited_at ASC
     </select>
 
     <delete id="deleteLog" parameterType="long">

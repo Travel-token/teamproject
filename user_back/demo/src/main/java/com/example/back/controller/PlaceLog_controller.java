@@ -25,7 +25,7 @@ import com.example.back.service.PlaceLog_service;
 // (주소는 프론트 관례대로 /places 유지, 실제 테이블은 trip_place_logs)
 // ============================================================
 @RestController
-@RequestMapping("/trips/{tripId}/places")
+@RequestMapping("/api/trips/{tripId}/places")
 public class PlaceLog_controller {
 
     private final PlaceLog_service placeLogService;
