@@ -18,16 +18,16 @@ export interface ProfileResponse {
 
 // 서버가 { success, data } 로 감싸지 않고 이 엔드포인트들은 객체를 그대로 내려준다.
 export async function fetchMyProfile(): Promise<ProfileResponse> {
-  const res = await api.get<ProfileResponse>('/users/me');
+  const res = await api.get<ProfileResponse>('/api/users/me');
   return res.data;
 }
 
 export async function updateMyProfileName(name: string): Promise<void> {
-  await api.patch('/users/me', { name });
+  await api.patch('/api/users/me', { name });
 }
 
 export async function updateAccount(bank: string, accountNumber: string): Promise<void> {
-  await api.patch('/users/me/account', { bank, accountNumber });
+  await api.patch('/api/users/me/account', { bank, accountNumber });
 }
 
 export type NotificationKey =
@@ -39,7 +39,7 @@ export type NotificationKey =
   | 'darkMode';
 
 export async function updateNotificationSetting(key: NotificationKey, value: boolean): Promise<void> {
-  await api.patch('/users/me/notifications', { [key]: value });
+  await api.patch('/api/users/me/notifications', { [key]: value });
 }
 
 // ── 내 피드 ──────────────────────────────
@@ -83,7 +83,7 @@ function toMyFeedItem(f: FeedDetailApi): MyFeedItem {
 }
 
 export async function fetchMyFeeds(): Promise<MyFeedItem[]> {
-  const res = await api.get<FeedDetailApi[]>('/users/me/feeds');
+  const res = await api.get<FeedDetailApi[]>('/api/users/me/feeds');
   return res.data.map(toMyFeedItem);
 }
 
@@ -101,17 +101,17 @@ export interface MyFeedUpdatePayload {
 }
 
 export async function createMyFeed(payload: MyFeedCreatePayload): Promise<MyFeedItem> {
-  const res = await api.post<FeedDetailApi>('/users/me/feeds', payload);
+  const res = await api.post<FeedDetailApi>('/api/users/me/feeds', payload);
   return toMyFeedItem(res.data);
 }
 
 export async function updateMyFeed(id: string, payload: MyFeedUpdatePayload): Promise<MyFeedItem> {
-  const res = await api.put<FeedDetailApi>(`/users/me/feeds/${id}`, payload);
+  const res = await api.put<FeedDetailApi>(`/api/users/me/feeds/${id}`, payload);
   return toMyFeedItem(res.data);
 }
 
 export async function deleteMyFeed(id: string): Promise<void> {
-  await api.delete(`/users/me/feeds/${id}`);
+  await api.delete(`/api/users/me/feeds/${id}`);
 }
 
 // ── 여행 기록 ──────────────────────────────
@@ -164,8 +164,8 @@ function tripBadge(status: TripHistoryApi['status']): '진행 중' | '완료' {
 // 방문 장소 수는 아직 이를 집계해주는 API가 없어 0으로 내려간다. (관련 API가 추가되면 교체)
 export async function fetchHistoryStats(): Promise<HistoryStats> {
   const [tripsRes, statsRes] = await Promise.all([
-    api.get<TripHistoryApi[]>('/users/me/history'),
-    api.get<ExpenseStatsApi>('/users/me/history/stats'),
+    api.get<TripHistoryApi[]>('/api/users/me/history'),
+    api.get<ExpenseStatsApi>('/api/users/me/history/stats'),
   ]);
   const trips = tripsRes.data ?? [];
   return {
@@ -177,7 +177,7 @@ export async function fetchHistoryStats(): Promise<HistoryStats> {
 }
 
 export async function fetchHistoryTrips(query?: string): Promise<HistoryTrip[]> {
-  const res = await api.get<TripHistoryApi[]>('/users/me/history');
+  const res = await api.get<TripHistoryApi[]>('/api/users/me/history');
   let trips = res.data ?? [];
 
   // 서버에 검색 파라미터가 없어서 이름 기준으로 프론트에서 필터링한다.
@@ -202,7 +202,7 @@ export async function fetchHistoryTrips(query?: string): Promise<HistoryTrip[]> 
 // ── 계정 ──────────────────────────────
 export async function logout(): Promise<void> {
   try {
-    await api.post('/auth/logout');
+    await api.post('/api/auth/logout');
   } finally {
     // 서버 호출 성공 여부와 무관하게 로컬 토큰은 항상 지운다.
     await removeToken();
@@ -210,5 +210,5 @@ export async function logout(): Promise<void> {
 }
 
 export async function withdrawAccount(): Promise<void> {
-  await api.delete('/users/me');
+  await api.delete('/api/users/me');
 }

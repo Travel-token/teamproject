@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import com.example.back.vo.feed.FeedPostVo;
 
 @Mapper
-public interface FeedMapper {
+public interface FeedInMyPageMapper {
 
     List<FeedPostVo> selectByAuthorId(@Param("authorId") Long authorId);
 
