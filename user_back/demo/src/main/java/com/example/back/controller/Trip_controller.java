@@ -51,6 +51,7 @@ public class Trip_controller {
     @PostMapping
     public ResponseEntity<?> createTrip(@RequestBody Trip_RequestDto request) {
         try {
+            System.out.println("========== TripController 진입 ==========");
             return ResponseEntity.status(HttpStatus.CREATED).body(tripService.createTrip(request));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
@@ -60,6 +61,7 @@ public class Trip_controller {
     @GetMapping
     public ResponseEntity<List<Trip_ResponseDto>> getAllTrips(
             @RequestParam(name = "status", required = false) String status) {
+        System.out.println("========== TripController 진입 ==========");
         return ResponseEntity.ok(tripService.getAllTrips(status));
     }
 
@@ -67,7 +69,7 @@ public class Trip_controller {
     public ResponseEntity<Trip_ResponseDto> getActiveTrip() {
         Trip_ResponseDto active = tripService.getActiveTrip();
         if (active == null) {
-            return ResponseEntity.noContent().build();   // 204: 진행중 여행 없음
+            return ResponseEntity.noContent().build(); // 204: 진행중 여행 없음
         }
         return ResponseEntity.ok(active);
     }
@@ -83,7 +85,7 @@ public class Trip_controller {
 
     @PatchMapping("/{tripId}")
     public ResponseEntity<?> updateTrip(@PathVariable("tripId") Long tripId,
-                                        @RequestBody Trip_RequestDto request) {
+            @RequestBody Trip_RequestDto request) {
         try {
             return ResponseEntity.ok(tripService.updateTrip(tripId, request));
         } catch (IllegalArgumentException e) {
@@ -128,7 +130,7 @@ public class Trip_controller {
 
     @PostMapping("/{tripId}/members")
     public ResponseEntity<?> addMember(@PathVariable("tripId") Long tripId,
-                                       @RequestBody TripMember_RequestDto request) {
+            @RequestBody TripMember_RequestDto request) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(tripService.addMember(tripId, request));
         } catch (IllegalArgumentException e) {
@@ -138,7 +140,7 @@ public class Trip_controller {
 
     @DeleteMapping("/{tripId}/members/{memberId}")
     public ResponseEntity<?> removeMember(@PathVariable("tripId") Long tripId,
-                                          @PathVariable("memberId") Long memberId) {
+            @PathVariable("memberId") Long memberId) {
         if (!tripService.removeMember(memberId)) {
             return ResponseEntity.notFound().build();
         }

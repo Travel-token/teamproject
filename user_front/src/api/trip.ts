@@ -1,6 +1,5 @@
 import { api } from './client';
 import { Trip, Member, PlaceItem } from '../types';
-
 /**
  * ============================================================
  * trip.ts : 여행(Trip) 서버 통신 담당
@@ -16,21 +15,24 @@ import { Trip, Member, PlaceItem } from '../types';
  *  → 이 파일에서는 토큰을 신경 쓰지 않아도 된다.
  * ============================================================
  */
-
 /** 서버가 내려주는 여행 1건의 모양 (Trip_ResponseDto와 1:1) */
 export interface ServerTrip {
     tripId: number;
     name: string;
     region: string | null;
-    startDate: string | null;   // "2026-04-10"
+    startDate: string | null;
     endDate: string | null;
     budget: number | null;
     inviteCode: string;
     status: 'planned' | 'ongoing' | 'completed';
     createdBy: number;
     createdAt: string;
+    emoji: string | null;
+    currency?: string;
+    myExpense: number;
+    totalExpense: number;
+    photoUrls: string[];
 }
-
 /** 서버가 내려주는 멤버 1건 (TripMember_ResponseDto와 1:1) */
 export interface ServerMember {
     memberId: number;
@@ -41,35 +43,35 @@ export interface ServerMember {
     colorCode: string;
     role: 'owner' | 'member';
 }
-
 /** 여행 생성/수정 시 보낼 내용 */
 export interface TripPayload {
     name: string;
     region: string;
-    startDate: string;   // "yyyy-MM-dd" (필수)
-    endDate: string;     // "yyyy-MM-dd" (필수)
+    startDate: string; // "yyyy-MM-dd" (필수)
+    endDate: string; // "yyyy-MM-dd" (필수)
     budget?: number | null;
     creatorName?: string;
+    emoji?: string;
+    currency?: string;
+    memberNames?: string[];
 }
-
 // ============================================================
 // 번역기들 : 서버 모양 → 화면(Trip 타입) 모양
 // ============================================================
-
 /** "2026-04-10" + "2026-04-12" → "04.10 - 04.12" */
 function toDateLabel(start: string | null, end: string | null): string {
-    if (!start || !end) return '날짜 미정';
-    const fmt = (d: string) => d.slice(5).replace('-', '.');  // "2026-04-10" → "04.10"
+    if (!start || !end)
+        return '날짜 미정';
+    const fmt = (d: string) => d.slice(5).replace('-', '.'); // "2026-04-10" → "04.10"
     return `${fmt(start)} - ${fmt(end)}`;
 }
-
 /** 며칠 여행인지 계산 (시작일과 종료일 포함해서 셈) */
 function toDays(start: string | null, end: string | null): number {
-    if (!start || !end) return 1;
+    if (!start || !end)
+        return 1;
     const diff = new Date(end).getTime() - new Date(start).getTime();
     return Math.max(1, Math.round(diff / (1000 * 60 * 60 * 24)) + 1);
 }
-
 /**
  * 서버 여행 → 화면용 Trip 객체.
  * 서버에 아직 없는 값(이모지·지출액·사진)은 기본값으로 채운다.
@@ -80,102 +82,105 @@ export function toTrip(s: ServerTrip, members: Member[] = []): Trip {
         id: String(s.tripId),
         name: s.name,
         region: s.region ?? '미정',
-        emoji: '🧳',                                    // trips 테이블에 emoji 컬럼이 없어 기본값
+        emoji: s.emoji ?? '🧳',
+        currency: s.currency ?? 'KRW',
         status: s.status === 'completed' ? '완료' : '진행 중',
         dateLabel: toDateLabel(s.startDate, s.endDate),
         days: toDays(s.startDate, s.endDate),
-        myExpense: 0,                                   // 지출 API 연동 후 채울 값
-        totalExpense: 0,                                // 〃
+        myExpense: Number(s.myExpense ?? 0),
+        totalExpense: Number(s.totalExpense ?? 0),
+        collage: s.photoUrls ?? [],
         members,
-        collage: [],
     };
 }
-
 /** 서버 멤버 → 화면용 Member */
 export function toMember(m: ServerMember): Member {
     return { id: String(m.memberId), name: m.displayName };
 }
-
 // ============================================================
 // API 호출 함수들
 // ============================================================
-
 /** GET /trips - 여행 목록 (status로 거를 수 있음) */
 export async function fetchTrips(status?: 'planned' | 'ongoing' | 'completed'): Promise<Trip[]> {
-    const res = await api.get<ServerTrip[]>('/trips', { params: status ? { status } : undefined });
-    if (!Array.isArray(res.data)) return [];
+    const res = await api.get<ServerTrip[]>('/api/trips', { params: status ? { status } : undefined });
+    if (!Array.isArray(res.data))
+        return [];
     return res.data.map((s) => toTrip(s));
 }
-
 /** GET /trips/active - 진행 중인 여행 1건 (없으면 서버가 204를 주므로 null) */
 export async function fetchActiveTrip(): Promise<Trip | null> {
-    const res = await api.get<ServerTrip>('/trips/active');
-    if (!res.data || !(res.data as ServerTrip).tripId) return null;
+    const res = await api.get<ServerTrip>('/api/trips/active');
+    if (!res.data || !(res.data as ServerTrip).tripId)
+        return null;
     return toTrip(res.data);
 }
-
 /** GET /trips/{id} - 여행 1건 (서버 원본) */
 export async function fetchTripRaw(tripId: string): Promise<ServerTrip> {
-    const res = await api.get<ServerTrip>(`/trips/${tripId}`);
+    const res = await api.get<ServerTrip>(`/api/trips/${tripId}`);
     return res.data;
 }
-
 /** GET /trips/{id} - 여행 1건 */
 export async function fetchTrip(tripId: string): Promise<Trip> {
     return toTrip(await fetchTripRaw(tripId));
 }
-
 /** POST /trips - 여행 만들기 (서버가 초대코드 자동 발급 + 방장 멤버 자동 등록) */
 export async function createTrip(payload: TripPayload): Promise<Trip> {
-    const res = await api.post<ServerTrip>('/trips', payload);
+    const res = await api.post<ServerTrip>('/api/trips', payload);
     return toTrip(res.data);
 }
-
 /** PATCH /trips/{id} - 여행 정보 수정 */
 export async function updateTrip(tripId: string, payload: TripPayload): Promise<Trip> {
-    const res = await api.patch<ServerTrip>(`/trips/${tripId}`, payload);
+    const res = await api.patch<ServerTrip>(`/api/trips/${tripId}`, payload);
     return toTrip(res.data);
 }
-
 /** DELETE /trips/{id} - 여행 삭제 (동선·지출·멤버도 DB에서 함께 삭제됨) */
 export async function deleteTrip(tripId: string): Promise<void> {
-    await api.delete(`/trips/${tripId}`);
+    await api.delete(`/api/trips/${tripId}`);
 }
-
 /** POST /trips/{id}/complete - 여행 종료 (상태를 completed로) */
 export async function completeTrip(tripId: string): Promise<Trip> {
-    const res = await api.post<ServerTrip>(`/trips/${tripId}/complete`);
+    const res = await api.post<ServerTrip>(`/api/trips/${tripId}/complete`);
     return toTrip(res.data);
 }
-
 /** GET /trips/{id}/invite-code - 초대 코드 조회 */
 export async function fetchInviteCode(tripId: string): Promise<string> {
-    const res = await api.get<{ inviteCode: string }>(`/trips/${tripId}/invite-code`);
+    const res = await api.get<{
+        inviteCode: string;
+    }>(`/api/trips/${tripId}/invite-code`);
     return res.data.inviteCode;
 }
-
 // ── 멤버 ──────────────────────────────
-
 /** GET /trips/{id}/members - 멤버 목록 */
 export async function fetchMembers(tripId: string): Promise<Member[]> {
-    const res = await api.get<ServerMember[]>(`/trips/${tripId}/members`);
-    if (!Array.isArray(res.data)) return [];
+    const res = await api.get<ServerMember[]>(`/api/trips/${tripId}/members`);
+    if (!Array.isArray(res.data))
+        return [];
     return res.data.map(toMember);
 }
-
 /** POST /trips/{id}/members - 멤버 추가 (가입 안 한 친구도 이름만으로 가능) */
 export async function addMember(tripId: string, displayName: string, colorCode?: string): Promise<Member> {
-    const res = await api.post<ServerMember>(`/trips/${tripId}/members`, { displayName, colorCode });
+    const res = await api.post<ServerMember>(`/api/trips/${tripId}/members`, { displayName, colorCode });
     return toMember(res.data);
 }
-
 /** DELETE /trips/{id}/members/{memberId} - 멤버 내보내기 */
 export async function removeMember(tripId: string, memberId: string): Promise<void> {
-    await api.delete(`/trips/${tripId}/members/${memberId}`);
+    await api.delete(`/api/trips/${tripId}/members/${memberId}`);
 }
-
+export async function updatePlaceItem(tripId: string, placeLogId: string, payload: {
+    name?: string;
+    memo?: string;
+    visitedAt?: string;
+}): Promise<PlaceItem> {
+    const res = await api.patch<ServerPlaceLog>(`/api/trips/${tripId}/places/${placeLogId}`, payload);
+    return toPlaceItem(res.data);
+}
+// 화면 순서 변경
+export async function updatePlaceOrder(tripId: string, placeLogIds: string[]): Promise<void> {
+    await api.patch(`/api/trips/${tripId}/places/order`, {
+        placeLogIds,
+    });
+}
 // ── 동선(장소 기록) ──────────────────────────────
-
 /** 서버가 내려주는 동선 1건 (PlaceLog_ResponseDto와 1:1) */
 export interface ServerPlaceLog {
     logId: number;
@@ -184,30 +189,29 @@ export interface ServerPlaceLog {
     name: string;
     memo: string | null;
     linkedExpenseId: number | null;
-    visitedAt: string;          // "2026-04-10 14:50:00"
+    visitedAt: string; // "2026-04-10 14:50:00"
     detectedByGps: boolean;
-    latitude: number | null;    // 등록 장소가 아니면 null
+    latitude: number | null; // 등록 장소가 아니면 null
     longitude: number | null;
     emoji: string | null;
 }
-
 // "2026-04-10 14:50:00" → "오후 2:50"
 function toTimeLabel(visitedAt: string): string {
     const t = visitedAt?.split(' ')[1];
-    if (!t) return '';
+    if (!t)
+        return '';
     const [hh, mm] = t.split(':');
     const h = Number(hh);
     return `${h < 12 ? '오전' : '오후'} ${h % 12 === 0 ? 12 : h % 12}:${mm}`;
 }
-
 // "2026-04-10 14:50:00" → "04월 10일"
 function toDayLabel(visitedAt: string): string {
     const d = visitedAt?.split(' ')[0];
-    if (!d) return '';
+    if (!d)
+        return '';
     const [, mm, dd] = d.split('-');
     return `${mm}월 ${dd}일`;
 }
-
 // 서버 동선 → 화면용 PlaceItem (좌표 없으면 지도에서 제외)
 export function toPlaceItem(s: ServerPlaceLog): PlaceItem {
     return {
@@ -221,36 +225,35 @@ export function toPlaceItem(s: ServerPlaceLog): PlaceItem {
         lng: s.longitude as number,
     };
 }
-
 /** GET /trips/{tripId}/places - 동선 목록 (방문 시각 순) */
 export async function fetchPlaceLogs(tripId: string): Promise<ServerPlaceLog[]> {
-    const res = await api.get<ServerPlaceLog[]>(`/trips/${tripId}/places`);
+    const res = await api.get<ServerPlaceLog[]>(`/api/trips/${tripId}/places`);
     return Array.isArray(res.data) ? res.data : [];
 }
-
 /** 동선 목록을 화면용으로 변환해 조회 */
 export async function fetchPlaceItems(tripId: string): Promise<PlaceItem[]> {
     return (await fetchPlaceLogs(tripId)).map(toPlaceItem);
 }
-
 /** POST /trips/{tripId}/places - 동선 추가 */
-export async function addPlaceLog(
-    tripId: string,
-    payload: { name: string; memo?: string; visitedAt?: string; placeId?: number }
-): Promise<ServerPlaceLog> {
-    const res = await api.post<ServerPlaceLog>(`/trips/${tripId}/places`, payload);
+export async function addPlaceLog(tripId: string, payload: {
+    name: string;
+    memo?: string;
+    visitedAt?: string;
+    placeId?: number;
+}): Promise<ServerPlaceLog> {
+    const res = await api.post<ServerPlaceLog>(`/api/trips/${tripId}/places`, payload);
     return res.data;
 }
-
 /** 동선 추가 후 화면용으로 변환해 반환 */
-export async function addPlaceItem(
-    tripId: string,
-    payload: { name: string; memo?: string; visitedAt?: string; placeId?: number }
-): Promise<PlaceItem> {
+export async function addPlaceItem(tripId: string, payload: {
+    name: string;
+    memo?: string;
+    visitedAt?: string;
+    placeId?: number;
+}): Promise<PlaceItem> {
     return toPlaceItem(await addPlaceLog(tripId, payload));
 }
-
 /** DELETE /trips/{tripId}/places/{logId} - 동선 삭제 */
 export async function deletePlaceLog(tripId: string, logId: string): Promise<void> {
-    await api.delete(`/trips/${tripId}/places/${logId}`);
+    await api.delete(`/api/trips/${tripId}/places/${logId}`);
 }

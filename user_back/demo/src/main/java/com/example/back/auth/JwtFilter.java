@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 public class JwtFilter extends OncePerRequestFilter {
 
         private final JwtProvider jwtProvider;
+        private final com.example.back.mapper.UserMapper userMapper;
 
         @Override
         protected void doFilterInternal(
@@ -31,6 +32,10 @@ public class JwtFilter extends OncePerRequestFilter {
                 if (token != null && jwtProvider.validateToken(token)) {
 
                         Long userId = jwtProvider.getUserId(token);
+                        var user = userMapper.findById(userId);
+                        if (user == null || user.getStatus() != com.example.back.vo.enums.UserStatus.ACTIVE) {
+                            response.sendError(401, "사용할 수 없는 계정입니다."); return;
+                        }
 
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                                         userId,

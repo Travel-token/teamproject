@@ -16,21 +16,21 @@ public class AuthController {
     @PostMapping("/google")
     public String googleLogin() {
 
-        return "나중에 구글";
+        throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_IMPLEMENTED, "소셜 로그인 공급자 설정이 필요합니다.");
 
     }
 
     @PostMapping("/kakao")
     public String kakaoLogin() {
 
-        return "나중에 카카오";
+        throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_IMPLEMENTED, "소셜 로그인 공급자 설정이 필요합니다.");
 
     }
 
     @PostMapping("/naver")
     public String naverLogin() {
 
-        return "나중에 네이버";
+        throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_IMPLEMENTED, "소셜 로그인 공급자 설정이 필요합니다.");
 
     }
 

@@ -21,6 +21,9 @@ public class Trip_RequestDto {
 
     /** 여행 이름 (필수). 비어 있으면 Service의 문지기가 400으로 거절 */
     private String name;
+    private String emoji;
+    private String currency;
+    private java.util.List<String> memberNames;
 
     /** 여행 지역 (필수) */
     private String region;

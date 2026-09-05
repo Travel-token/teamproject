@@ -48,13 +48,13 @@ public class FeedController {
     }
 
     @PostMapping("/feeds/{id}/like")
-    public String like(@PathVariable Long id, @RequestParam Long userId) {
+    public String like(@PathVariable Long id, @RequestParam(required = false) Long userId) {
         feedService.like(id, userId);
         return "좋아요 등록 완료";
     }
 
     @DeleteMapping("/feeds/{id}/like")
-    public String unlike(@PathVariable Long id, @RequestParam Long userId) {
+    public String unlike(@PathVariable Long id, @RequestParam(required = false) Long userId) {
         feedService.unlike(id, userId);
         return "좋아요 취소 완료";
     }

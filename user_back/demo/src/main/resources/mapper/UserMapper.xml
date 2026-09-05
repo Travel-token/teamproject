@@ -36,7 +36,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             AND provider_uid = #{providerUid} 
     </select>
 
-    <insert id="insert" parameterType="com.example.back.vo.user.UserVo" useGeneratedKeys="true" keyProperty="id"> 
+    <insert id="saveid" parameterType="com.example.back.vo.user.UserVo" useGeneratedKeys="true" keyProperty="id"> 
         INSERT INTO users (name, email, login_provider, provider_uid, profile_emoji, is_dark_mode, status) 
         VALUES ( #{name}, #{email}, #{loginProvider, typeHandler=com.example.back.vo.enums.LoginProvider$Handler}, 
         #{providerUid}, #{profileEmoji}, #{darkMode}, #{status, typeHandler=com.example.back.vo.enums.UserStatus$Handler} ) 

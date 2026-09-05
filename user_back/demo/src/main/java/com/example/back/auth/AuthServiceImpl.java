@@ -44,13 +44,17 @@ public class AuthServiceImpl implements AuthService {
                         newUser.setEmail(email);
                         newUser.setLoginProvider(null);
                         newUser.setProfileEmoji("😀");
-                        // newUser.setStatus("active");
+                        newUser.setStatus(com.example.back.vo.enums.UserStatus.ACTIVE);
+                        newUser.setDarkMode(false);
                         userService.saveid(newUser);
 
                         user = userService.findByEmail(email);
 
                 }
 
+                if (user.getStatus() != com.example.back.vo.enums.UserStatus.ACTIVE) {
+                    throw new IllegalArgumentException("탈퇴하거나 비활성화된 계정입니다.");
+                }
                 Long userId = user.getId();
 
                 String token = jwtProvider.generateToken(

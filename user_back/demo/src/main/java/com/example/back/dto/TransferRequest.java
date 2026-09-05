@@ -1,29 +1,45 @@
 package com.example.back.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import java.math.BigDecimal;
+
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-
+// 송금 요청
 public class TransferRequest {
 
     @Getter
     @Setter
     public static class Create {
-        @NotBlank
-        private String fromName;
 
-        @NotBlank
-        private String toName;
+        @NotNull
+        private Long fromMemberId;
+
+        @NotNull
+        private Long toMemberId;
 
         @NotNull
         @Positive
         private BigDecimal amount;
 
-        private String dateLabel;
+        private String memo;
+    }
+
+    @Getter
+    @Setter
+    public static class Update {
+
+        @NotNull
+        private Long fromMemberId;
+
+        @NotNull
+        private Long toMemberId;
+
+        @NotNull
+        @Positive
+        private BigDecimal amount;
 
         private String memo;
     }

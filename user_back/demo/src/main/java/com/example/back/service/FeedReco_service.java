@@ -12,6 +12,7 @@ import com.example.back.dto.FeedReco_StatusRequestDto;
  * ============================================================
  */
 public interface FeedReco_service {
+    java.util.Map<String,Object> adopt(Long id,String caption,Long placeId);
 
     /** 정산 완료 시 추천 초안 생성 (여행 동선을 재료로 캡션 만들기) */
     FeedReco_ResponseDto generate(Long tripId, FeedReco_GenerateRequestDto request);

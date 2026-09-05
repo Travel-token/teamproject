@@ -14,20 +14,38 @@
     </resultMap>
 
     <select id="findByApiContentId" parameterType="string" resultMap="placeResultMap">
-        SELECT id, api_content_id, name, addr, category, lat, lng, thumbnail_url
-        FROM place
-        WHERE api_content_id = #{apiContentId}
+        SELECT id, external_api_id AS api_content_id, name, address AS addr, category, latitude AS lat, longitude AS lng, NULL AS thumbnail_url
+        FROM places
+        WHERE external_api_id = #{apiContentId}
     </select>
 
     <select id="findById" parameterType="long" resultMap="placeResultMap">
-        SELECT id, api_content_id, name, addr, category, lat, lng, thumbnail_url
-        FROM place
+        SELECT id, external_api_id AS api_content_id, name, address AS addr, category, latitude AS lat, longitude AS lng, NULL AS thumbnail_url
+        FROM places
         WHERE id = #{id}
     </select>
 
     <insert id="insert" parameterType="com.example.back.vo.PlaceVO" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO place (api_content_id, name, addr, category, lat, lng, thumbnail_url)
-        VALUES (#{apiContentId}, #{name}, #{addr}, #{category}, #{lat}, #{lng}, #{thumbnailUrl})
+        INSERT INTO places (external_api_id, name, address, category, latitude, longitude)
+        VALUES (#{apiContentId}, #{name}, #{addr}, #{category}, #{lat}, #{lng})
     </insert>
+
+
+    <!-- 장소 검색 -->
+<select id="searchByKeyword"
+        resultType="com.example.back.dto.PlaceSearchResponse">
+    SELECT
+        id,
+        name,
+        address,
+        latitude,
+        longitude,
+        NULL AS thumbnailUrl
+    FROM places
+    WHERE name LIKE CONCAT('%', #{query}, '%')
+       OR address LIKE CONCAT('%', #{query}, '%')
+    ORDER BY name ASC
+    LIMIT 20
+</select>
 
 </mapper>

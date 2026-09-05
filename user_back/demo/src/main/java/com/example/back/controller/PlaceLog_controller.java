@@ -7,14 +7,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.back.dto.PlaceLogUpdateRequest;
 import com.example.back.dto.PlaceLog_RequestDto;
 import com.example.back.dto.PlaceLog_ResponseDto;
+import com.example.back.dto.PlaceOrderRequest;
 import com.example.back.service.PlaceLog_service;
 
 // ============================================================
@@ -36,7 +39,7 @@ public class PlaceLog_controller {
 
     @PostMapping
     public ResponseEntity<?> addLog(@PathVariable("tripId") Long tripId,
-                                    @RequestBody PlaceLog_RequestDto request) {
+            @RequestBody PlaceLog_RequestDto request) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(placeLogService.addLog(tripId, request));
         } catch (IllegalArgumentException e) {
@@ -51,10 +54,34 @@ public class PlaceLog_controller {
 
     @DeleteMapping("/{logId}")
     public ResponseEntity<?> deleteLog(@PathVariable("tripId") Long tripId,
-                                       @PathVariable("logId") Long logId) {
+            @PathVariable("logId") Long logId) {
         if (!placeLogService.deleteLog(logId)) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.noContent().build();
+    }
+
+    // 동선 순서
+    @PatchMapping("/order")
+    public ResponseEntity<Void> updateOrder(
+            @PathVariable("tripId") Long tripId,
+            @RequestBody PlaceOrderRequest request) {
+        placeLogService.updateOrder(tripId, request.getPlaceLogIds());
+        return ResponseEntity.noContent().build();
+    }
+
+    // 동선 수정
+    @PatchMapping("/{logId}")
+    public ResponseEntity<?> updateLog(
+            @PathVariable("tripId") Long tripId,
+            @PathVariable("logId") Long logId,
+            @RequestBody PlaceLogUpdateRequest request) {
+        try {
+            return ResponseEntity.ok(
+                    placeLogService.updateLog(tripId, logId, request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage()));
+        }
     }
 }

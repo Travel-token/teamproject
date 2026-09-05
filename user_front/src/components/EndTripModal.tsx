@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import BottomSheetModal from './BottomSheetModal';
 import { CancelButton, SubmitButton } from './FormBits';
@@ -11,9 +11,23 @@ export default function EndTripModal({
 }: {
   visible: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<boolean>;
 }) {
   const { colors } = useTheme();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    if (submitting) return;
+
+    setSubmitting(true);
+    try {
+      const completed = await onConfirm();
+      if (completed) onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <BottomSheetModal visible={visible} onClose={onClose} title="여행을 끝낼까요?">
       <View style={{ alignItems: 'center', paddingHorizontal: 4, paddingBottom: 8 }}>
@@ -25,11 +39,9 @@ export default function EndTripModal({
         </Text>
       </View>
       <SubmitButton
-        label="여행 끝내기"
-        onPress={() => {
-          onConfirm();
-          onClose();
-        }}
+        label={submitting ? "종료 중..." : "여행 끝내기"}
+        disabled={submitting}
+        onPress={handleConfirm}
       />
       <CancelButton onPress={onClose} />
     </BottomSheetModal>

@@ -9,6 +9,10 @@ import java.time.LocalDateTime;
 @Setter
 public class FeedPostVO {
 
+    private String authorName;
+    private String authorProfileImageUrl;
+    private boolean likedByMe;
+    private java.util.List<String> photoUrls;
     private Long id;
     private Long userId;
     private Long placeId;

@@ -40,7 +40,7 @@
         FROM trip_place_logs l
         LEFT JOIN places p ON p.id = l.place_id
         WHERE l.trip_id = #{trip_id}
-        ORDER BY l.visited_at ASC
+        ORDER BY l.display_order ASC, l.visited_at ASC, l.id ASC
     </select>
 
     <delete id="deleteLog" parameterType="long">
@@ -48,4 +48,64 @@
         WHERE id = #{id}
     </delete>
 
+
+    <!-- 동선 순서 -->
+    <update id="updateDisplayOrder">
+        UPDATE trip_place_logs
+        SET display_order = #{displayOrder}
+        WHERE trip_id = #{tripId}
+        AND id = #{logId}
+    </update>
+
+
+
+
+
+
+
+
+    <!-- 동선 단건 조회 -->
+    <select id="findByTripIdAndId" resultMap="placeLogMap">
+        SELECT
+            l.id,
+            l.trip_id,
+            l.place_id,
+            l.name,
+            l.memo,
+            l.linked_expense_id,
+            l.visited_at,
+            l.detected_by_gps,
+            l.created_at,
+            p.latitude,
+            p.longitude,
+            p.emoji AS place_emoji
+        FROM trip_place_logs l
+        LEFT JOIN places p ON p.id = l.place_id
+        WHERE l.trip_id = #{tripId}
+        AND l.id = #{logId}
+    </select>
+
+    <!-- 동선 수정 -->
+    <update id="updateLog">
+        UPDATE trip_place_logs
+        <set>
+            <if test="request.name != null">
+                name = #{request.name},
+            </if>
+            <if test="request.memo != null">
+                memo = #{request.memo},
+            </if>
+            <if test="request.visitedAt != null">
+                visited_at = #{request.visitedAt},
+            </if>
+            <if test="request.placeId != null">
+                place_id = #{request.placeId},
+            </if>
+            <if test="request.detectedByGps != null">
+                detected_by_gps = #{request.detectedByGps},
+            </if>
+        </set>
+        WHERE trip_id = #{tripId}
+        AND id = #{logId}
+    </update>
 </mapper>

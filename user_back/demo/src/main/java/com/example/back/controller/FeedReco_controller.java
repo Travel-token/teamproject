@@ -18,17 +18,18 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.back.dto.FeedReco_GenerateRequestDto;
 import com.example.back.dto.FeedReco_ResponseDto;
 import com.example.back.dto.FeedReco_StatusRequestDto;
+import com.example.back.dto.SettlementDetailResponse;
 import com.example.back.service.FeedReco_service;
 
 /**
  * AI 피드 추천 API
  *
- * POST   /api/recommendations/trips/{tripId}   추천 생성
- * GET    /api/recommendations?userId=          사용자별 추천 목록
- * GET    /api/recommendations/trips/{tripId}   여행별 추천 목록
- * GET    /api/recommendations/{recoId}         추천 단건
- * PATCH  /api/recommendations/{recoId}         처리 결과 반영
- * DELETE /api/recommendations/{recoId}         추천 삭제
+ * POST /api/recommendations/trips/{tripId} 추천 생성
+ * GET /api/recommendations?userId= 사용자별 추천 목록
+ * GET /api/recommendations/trips/{tripId} 여행별 추천 목록
+ * GET /api/recommendations/{recoId} 추천 단건
+ * PATCH /api/recommendations/{recoId} 처리 결과 반영
+ * DELETE /api/recommendations/{recoId} 추천 삭제
  */
 @RestController
 @RequestMapping("/api/recommendations")
@@ -38,6 +39,9 @@ public class FeedReco_controller {
     private static final Long DEFAULT_USER_ID = 1L;
 
     private final FeedReco_service recoService;
+    public record AdoptRequest(String caption,Long placeId){}
+    @PostMapping("/{recoId}/adopt")
+    public Map<String,Object> adopt(@PathVariable Long recoId,@RequestBody AdoptRequest request){return recoService.adopt(recoId,request.caption(),request.placeId());}
 
     public FeedReco_controller(FeedReco_service recoService) {
         this.recoService = recoService;
@@ -45,7 +49,7 @@ public class FeedReco_controller {
 
     @PostMapping("/trips/{tripId}")
     public ResponseEntity<?> generate(@PathVariable("tripId") Long tripId,
-                                      @RequestBody FeedReco_GenerateRequestDto request) {
+            @RequestBody FeedReco_GenerateRequestDto request) {
         try {
             FeedReco_ResponseDto created = recoService.generate(tripId, request);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -76,7 +80,7 @@ public class FeedReco_controller {
 
     @PatchMapping("/{recoId}")
     public ResponseEntity<?> changeStatus(@PathVariable("recoId") Long recoId,
-                                          @RequestBody FeedReco_StatusRequestDto request) {
+            @RequestBody FeedReco_StatusRequestDto request) {
         try {
             return ResponseEntity.ok(recoService.changeStatus(recoId, request));
         } catch (IllegalArgumentException e) {
@@ -91,4 +95,12 @@ public class FeedReco_controller {
         }
         return ResponseEntity.noContent().build();
     }
+
+    // 정산 초안 생성
+    // @PostMapping
+    // public ResponseEntity<SettlementDetailResponse> create(
+    // @PathVariable Long tripId) {
+    // return ResponseEntity.status(201)
+    // .body(settlementService.create(tripId));
+    // }
 }

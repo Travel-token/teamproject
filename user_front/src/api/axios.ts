@@ -1,14 +1,4 @@
-import axios from "axios";
-
-const api = axios.create({
-
-    // 자신의 Spring Boot IP로 변경
-    baseURL: "http://172.21.4.11:8080",
-
-    headers: {
-        "Content-Type": "application/json",
-    },
-
-});
-
-export default api;
+import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
+// Authentication requests must not carry an old access token.
+export default axios.create({ baseURL: API_BASE_URL, timeout: 10000 });

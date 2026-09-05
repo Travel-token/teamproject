@@ -14,7 +14,7 @@
         <result column="settlement_id"        property="settlementId"/>
         <result column="trip_id"              property="tripId"/>
         <result column="place_id"             property="placeId"/>
-        <result column="target_user_id"       property="targetUserId"/>
+        <result column="user_id"       property="targetUserId"/>
         <result column="suggested_caption"    property="suggestedCaption"/>
         <result column="status"               property="status"
                 typeHandler="com.example.back.vo.enums.RecommendationStatus$Handler"/>
@@ -31,7 +31,7 @@
     <insert id="insertReco" parameterType="com.example.back.vo.recommendation.FeedRecommendationVo"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO feed_recommendations
-            (settlement_id, trip_id, place_id, target_user_id, suggested_caption,
+            (settlement_id, trip_id, place_id, user_id, suggested_caption,
              status, llm_provider, llm_model, llm_request, llm_response)
         VALUES
             (#{settlementId}, #{tripId}, #{placeId}, #{targetUserId}, #{suggestedCaption},
@@ -46,7 +46,7 @@
     <!-- 사용자별 추천 목록: 최근 추천이 위로 -->
     <select id="findByUserId" parameterType="long" resultMap="recoResultMap">
         SELECT * FROM feed_recommendations
-        WHERE target_user_id = #{target_user_id}
+        WHERE user_id = #{target_user_id}
         ORDER BY created_at DESC
     </select>
 

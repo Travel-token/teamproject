@@ -4,38 +4,62 @@
 
 <mapper namespace="com.example.back.mapper.TransferMapper">
 
-    <!-- 송금 추가 -->
-    <insert id="insertTransfer" useGeneratedKeys="true" keyProperty="id">
+    <!-- 송금 등록 -->
+    <insert id="insertTransfer"
+            parameterType="com.example.back.vo.expense.Transfer"
+            useGeneratedKeys="true"
+            keyProperty="id">
         INSERT INTO transfers (
-            trip_id, from_name, to_name, amount, spent_at, memo
+            trip_id,
+            from_member_id,
+            to_member_id,
+            amount,
+            memo
         ) VALUES (
-            #{tripId}, #{fromName}, #{toName}, #{amount}, #{spentAt}, #{memo}
+            #{tripId},
+            #{fromMemberId},
+            #{toMemberId},
+            #{amount},
+            #{memo}
         )
     </insert>
 
-    <!-- 송금 목록 조회 -->
-    <select id="selectTransferList" resultType="com.example.back.dto.TransferResponse$Item">
+    <!-- 송금 목록 -->
+    <select id="selectTransferList"
+            resultType="com.example.back.dto.TransferResponse$Item">
         SELECT
-            id,
-            from_name AS fromName,
-            to_name   AS toName,
-            DATE_FORMAT(spent_at, '%m월 %d일 %H:%i') AS dateLabel,
-            '계좌이체' AS method,
-            amount,
-            memo
-        FROM transfers
-        WHERE trip_id = #{tripId}
-        ORDER BY spent_at DESC
+            t.id,
+            t.from_member_id AS fromMemberId,
+            fm.display_name AS fromMemberName,
+            t.to_member_id AS toMemberId,
+            tm.display_name AS toMemberName,
+            t.amount,
+            t.memo,
+            DATE_FORMAT(t.created_at, '%Y-%m-%d %H:%i:%s') AS createdAt
+        FROM transfers t
+        JOIN trip_members fm ON fm.id = t.from_member_id
+        JOIN trip_members tm ON tm.id = t.to_member_id
+        WHERE t.trip_id = #{tripId}
+        ORDER BY t.created_at DESC, t.id DESC
     </select>
 
-    <!-- 존재 여부 -->
-    <select id="existsById" resultType="int">
-        SELECT COUNT(1) FROM transfers WHERE id = #{id}
-    </select>
+    <!-- 송금 수정 -->
+    <update id="updateTransfer">
+        UPDATE transfers
+        SET
+            from_member_id = #{request.fromMemberId},
+            to_member_id = #{request.toMemberId},
+            amount = #{request.amount},
+            memo = #{request.memo}
+        WHERE trip_id = #{tripId}
+          AND id = #{transferId}
+    </update>
 
     <!-- 송금 삭제 -->
     <delete id="deleteTransfer">
-        DELETE FROM transfers WHERE id = #{id}
+        DELETE FROM transfers
+        WHERE trip_id = #{tripId}
+          AND id = #{transferId}
     </delete>
 
 </mapper>

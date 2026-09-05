@@ -6,5 +6,6 @@ package com.example.back.vo.common;
  * 관례상 대문자(GOOGLE, ACTIVE)이기 때문에, 이름이 아닌 code로 매핑하기 위해 사용한다.
  */
 public interface CodeEnum {
+    @com.fasterxml.jackson.annotation.JsonValue
     String getCode();
 }

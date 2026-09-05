@@ -1,21 +1,23 @@
 package com.example.back.dto;
 
+import java.math.BigDecimal;
+
 import lombok.Builder;
 import lombok.Getter;
 
-import java.math.BigDecimal;
-
+// 송금 응답
 public class TransferResponse {
 
     @Getter
     @Builder
     public static class Item {
         private Long id;
-        private String fromName;
-        private String toName;
-        private String dateLabel;
-        private String method;
+        private Long fromMemberId;
+        private String fromMemberName;
+        private Long toMemberId;
+        private String toMemberName;
         private BigDecimal amount;
         private String memo;
+        private String createdAt;
     }
 }
