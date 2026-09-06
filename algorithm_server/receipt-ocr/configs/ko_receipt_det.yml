@@ -1,0 +1,116 @@
+# PP-OCRv4 검출(det) 파인튜닝 - CORD 영수증 레이아웃
+# base: PaddleOCR/configs/det/PP-OCRv4/ch_PP-OCRv4_det_student.yml
+Global:
+  use_gpu: true
+  epoch_num: 100
+  log_smooth_window: 20
+  print_batch_step: 20
+  save_model_dir: ./output/ko_receipt_det
+  save_epoch_step: 10
+  eval_batch_step: [0, 400]
+  cal_metric_during_train: false
+  pretrained_model: ./pretrain/ch_PP-OCRv4_det_train/best_accuracy
+  checkpoints:
+  use_visualdl: false
+  save_res_path: ./output/ko_receipt_det/predicts.txt
+
+Architecture:
+  model_type: det
+  algorithm: DB
+  Transform:
+  Backbone:
+    name: PPLCNetV3
+    scale: 0.75
+    det: true
+  Neck:
+    name: RSEFPN
+    out_channels: 96
+    shortcut: true
+  Head:
+    name: DBHead
+    k: 50
+
+Loss:
+  name: DBLoss
+  balance_loss: true
+  main_loss_type: DiceLoss
+  alpha: 5
+  beta: 10
+  ohem_ratio: 3
+
+Optimizer:
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
+  lr:
+    name: Cosine
+    learning_rate: 0.0001      # det 파인튜닝은 더 낮게
+    warmup_epoch: 2
+  regularizer:
+    name: L2
+    factor: 5.0e-05
+
+PostProcess:
+  name: DBPostProcess
+  thresh: 0.3
+  box_thresh: 0.6
+  max_candidates: 1500          # 영수증은 텍스트 박스가 매우 많음. 기본 1000보다 크게
+  unclip_ratio: 1.5
+
+Metric:
+  name: DetMetric
+  main_indicator: hmean
+
+Train:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./
+    label_file_list: [./data/cord/det/train_label.txt]
+    ratio_list: [1.0]
+    transforms:
+      - DecodeImage: { img_mode: BGR, channel_first: false }
+      - DetLabelEncode:
+      - IaaAugment:
+          augmenter_args:
+            - { type: Fliplr, args: { p: 0.0 } }     # 영수증은 좌우반전 금지
+            - { type: Affine, args: { rotate: [-6, 6] } }
+            - { type: Resize, args: { size: [0.5, 3] } }
+      - EastRandomCropData: { size: [960, 960], max_tries: 50, keep_ratio: true }
+      - MakeBorderMap: { shrink_ratio: 0.4, thresh_min: 0.3, thresh_max: 0.7 }
+      - MakeShrinkMap: { shrink_ratio: 0.4, min_text_size: 8 }
+      - NormalizeImage:
+          scale: 1./255.
+          mean: [0.485, 0.456, 0.406]
+          std: [0.229, 0.224, 0.225]
+          order: hwc
+      - ToCHWImage:
+      - KeepKeys:
+          keep_keys: [image, threshold_map, threshold_mask, shrink_map, shrink_mask]
+  loader:
+    shuffle: true
+    drop_last: false
+    batch_size_per_card: 8
+    num_workers: 8
+
+Eval:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./
+    label_file_list: [./data/cord/det/val_label.txt]
+    transforms:
+      - DecodeImage: { img_mode: BGR, channel_first: false }
+      - DetLabelEncode:
+      - DetResizeForTest: { limit_side_len: 1280, limit_type: max }
+      - NormalizeImage:
+          scale: 1./255.
+          mean: [0.485, 0.456, 0.406]
+          std: [0.229, 0.224, 0.225]
+          order: hwc
+      - ToCHWImage:
+      - KeepKeys:
+          keep_keys: [image, shape, polys, ignore_tags]
+  loader:
+    shuffle: false
+    drop_last: false
+    batch_size_per_card: 1
+    num_workers: 2

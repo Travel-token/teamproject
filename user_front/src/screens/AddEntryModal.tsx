@@ -1,8 +1,11 @@
 
 
 import { FontAwesome6 } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { extractReceipt } from '../api/ocr';
 import BottomSheetModal from '../components/BottomSheetModal';
 import {
   CancelButton,
@@ -163,6 +167,71 @@ function SpendTab({
   const [dateLabel, setDateLabel] = useState(todayLabel());
   const [memo, setMemo] = useState('');
 
+  
+  // ───────── OCR ─────────
+  const [ocrLoading, setOcrLoading] = useState(false);
+
+  // OCR 카테고리 코드 -> 앱 이모지 매핑
+  const CATEGORY_EMOJI: Record<string, string> = {
+    meal: '🍜',
+    cafe: '☕',
+    shop: '🛒',
+    trans: '🚕',
+    ticket: '🎫',
+  };
+
+  // "2026-04-06 15:15:00" -> "04월 06일 15:15"
+  const formatSpentAt = (raw: string): string => {
+    const m = raw.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+    if (!m) return todayLabel();
+    const [, , mm, dd, hh, min] = m;
+    return `${mm}월 ${dd}일 ${hh}:${min}`;
+  };
+
+  const handleReceiptScan = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('권한 필요', '사진 접근 권한을 허용해주세요.');
+      return;
+    }
+
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (picked.canceled) return;
+
+    setOcrLoading(true);
+    try {
+      const result = await extractReceipt(picked.assets[0].uri);
+
+      // 인식된 값만 채우고, 못 읽은 필드는 기존 값 유지
+      if (result.name) setName(result.name);
+      if (result.amount != null) setAmount(String(result.amount));
+      if (result.spentAt) setDateLabel(formatSpentAt(result.spentAt));
+      if (result.categoryCode && CATEGORY_EMOJI[result.categoryCode]) {
+        setEmoji(CATEGORY_EMOJI[result.categoryCode]);
+      }
+
+      const missing: string[] = [];
+      if (!result.name) missing.push('상호명');
+      if (result.amount == null) missing.push('금액');
+      if (!result.spentAt) missing.push('날짜');
+
+      if (missing.length > 0) {
+        Alert.alert('일부 인식 실패', `${missing.join(', ')}은(는) 직접 입력해주세요.`);
+      }
+    } catch (e: any) {
+      Alert.alert(
+        '인식 실패',
+        'OCR 서버에 연결할 수 없습니다.\n서버가 켜져 있는지, 같은 와이파이인지 확인해주세요.'
+      );
+      console.error('OCR error:', e?.message ?? e);
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
   const totalNum = Number(amount) || 0;
   const participantCount = participants.length;
 
@@ -197,15 +266,36 @@ function SpendTab({
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      {/* OCR 영역 — PaddleOCR 구현 전 placeholder */}
-      <Pressable style={[styles.receiptArea, { borderColor: colors.bdDashed }]}>
-        <FontAwesome6 name="camera" size={18} color={colors.txMuted} />
-        <Text style={[styles.receiptText, { color: colors.txMuted }]}>
-          영수증 사진으로 자동 입력
-        </Text>
-        <Text style={[styles.receiptSub, { color: colors.txPlaceholder }]}>
-          (OCR 기능 준비 중)
-        </Text>
+            {/* OCR 영역 */}
+      <Pressable
+        onPress={handleReceiptScan}
+        disabled={ocrLoading}
+        style={[
+          styles.receiptArea,
+          { borderColor: colors.bdDashed, opacity: ocrLoading ? 0.6 : 1 },
+        ]}
+      >
+        {ocrLoading ? (
+          <>
+            <ActivityIndicator size="small" color={colors.txMuted} />
+            <Text style={[styles.receiptText, { color: colors.txMuted }]}>
+              영수증 인식 중...
+            </Text>
+            <Text style={[styles.receiptSub, { color: colors.txPlaceholder }]}>
+              최대 1분 정도 걸릴 수 있어요
+            </Text>
+          </>
+        ) : (
+          <>
+            <FontAwesome6 name="camera" size={18} color={colors.txMuted} />
+            <Text style={[styles.receiptText, { color: colors.txMuted }]}>
+              영수증 사진으로 자동 입력
+            </Text>
+            <Text style={[styles.receiptSub, { color: colors.txPlaceholder }]}>
+              탭해서 사진 선택
+            </Text>
+          </>
+        )}
       </Pressable>
 
       {/* 지출 이름 + 이모지 */}
