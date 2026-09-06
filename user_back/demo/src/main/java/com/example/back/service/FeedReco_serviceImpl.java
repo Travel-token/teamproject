@@ -49,17 +49,19 @@ public class FeedReco_serviceImpl implements FeedReco_service {
         }
 
         List<PlaceLog_vo> logs = placeLogRepository.findByTripId(tripId);
-        String caption = captionGenerator.generate(trip.getName(), trip.getRegion(), logs);
+        CaptionGenerationResult generated = captionGenerator.generate(trip.getName(), trip.getRegion(), logs);
 
         FeedRecommendationVo reco = new FeedRecommendationVo();
         reco.setSettlementId(request.getSettlementId());
         reco.setTripId(tripId);
         reco.setPlaceId(resolveRepresentativePlaceId(logs));
         reco.setTargetUserId(request.getTargetUserId() == null ? DEFAULT_USER_ID : request.getTargetUserId());
-        reco.setSuggestedCaption(caption);
+        reco.setSuggestedCaption(generated.getCaption());
         reco.setStatus(RecommendationStatus.PENDING);
-        reco.setLlmProvider(captionGenerator.providerName());
-        reco.setLlmModel(captionGenerator.modelName());
+        reco.setLlmProvider(generated.getProvider());
+        reco.setLlmModel(generated.getModel());
+        reco.setLlmRequest(generated.getRequestJson());
+        reco.setLlmResponse(generated.getResponseJson());
 
         recoRepository.insertReco(reco);
 

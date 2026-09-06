@@ -14,13 +14,7 @@ public interface CaptionGenerator {
      * @param tripName  여행명
      * @param region    지역
      * @param placeLogs 방문 동선 (visited_at 오름차순)
-     * @return 추천 캡션
+     * @return 캡션 + 실제 사용된 provider/model + 디버깅용 요청/응답 원본
      */
-    String generate(String tripName, String region, List<PlaceLog_vo> placeLogs);
-
-    /** 생성 방식 식별자 (llm_provider 컬럼에 기록) */
-    String providerName();
-
-    /** 모델명 (llm_model 컬럼에 기록) */
-    String modelName();
+    CaptionGenerationResult generate(String tripName, String region, List<PlaceLog_vo> placeLogs);
 }
