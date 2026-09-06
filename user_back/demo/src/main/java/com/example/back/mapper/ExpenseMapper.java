@@ -22,6 +22,12 @@ public interface ExpenseMapper {
 
     );
 
+    ExpenseResponse.Item selectExpenseItem(
+            @Param("tripId") Long tripId,
+            @Param("expenseId") Long expenseId);
+
+    int updateExpense(Expense expense);
+
     // 권소희
     void insertExpense(Expense expense);
 
@@ -35,10 +41,10 @@ public interface ExpenseMapper {
 
     int existsById(@Param("id") Long id);
 
-    void updateExpense(Expense expense);
-
     void deleteSplitDetails(@Param("expenseId") Long expenseId);
 
-    void deleteExpense(@Param("id") Long id);
+    int deleteExpense(
+            @Param("tripId") Long tripId,
+            @Param("expenseId") Long expenseId);
 
 }

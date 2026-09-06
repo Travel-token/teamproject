@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.back.mapper.FeedCommentMapper">
+
+    <!-- 댓글 목록 -->
+    <select id="findByFeedId"
+            resultType="com.example.back.dto.FeedCommentResponse">
+        SELECT
+            fc.id,
+            u.name AS authorName,
+            fc.content
+        FROM feed_comments fc
+        JOIN users u ON u.id = fc.user_id
+        WHERE fc.feed_post_id = #{feedId}
+        ORDER BY fc.created_at ASC, fc.id ASC
+    </select>
+
+    <!-- 댓글 등록 -->
+    <insert id="insert">
+        INSERT INTO feed_comments (
+            feed_post_id,
+            user_id,
+            content,
+            created_at
+        ) VALUES (
+            #{feedId},
+            #{userId},
+            #{content},
+            NOW()
+        )
+    </insert>
+
+    <!-- 방금 등록한 댓글 -->
+    <select id="findLatestByFeedIdAndUserId"
+            resultType="com.example.back.dto.FeedCommentResponse">
+        SELECT
+            fc.id,
+            u.name AS authorName,
+            fc.content
+        FROM feed_comments fc
+        JOIN users u ON u.id = fc.user_id
+        WHERE fc.feed_post_id = #{feedId}
+          AND fc.user_id = #{userId}
+        ORDER BY fc.id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

@@ -1,39 +1,54 @@
 package com.example.back.controller;
 
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.example.back.common.ApiResponse;
 import com.example.back.dto.TransferRequest;
 import com.example.back.dto.TransferResponse;
 import com.example.back.service.TransferService;
 
-import java.util.List;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
+// 송금 관리
 @RestController
-@RequestMapping("/trips/{tripId}/transfers")
+@RequestMapping("/api/trips/{tripId}/transfers")
 @RequiredArgsConstructor
 public class TransferController {
 
     private final TransferService transferService;
 
-    /** 송금 목록 조회 */
     @GetMapping
-    public ApiResponse<List<TransferResponse.Item>> list(@PathVariable Long tripId) {
+    public ApiResponse<List<TransferResponse.Item>> list(
+            @PathVariable Long tripId) {
         return ApiResponse.ok(transferService.getTransfers(tripId));
     }
 
-    /** 송금 기록 추가 */
     @PostMapping
-    public ApiResponse<Void> create(
+    public ApiResponse<TransferResponse.Item> create(
             @PathVariable Long tripId,
             @Valid @RequestBody TransferRequest.Create request) {
-        transferService.createTransfer(tripId, request);
-        return ApiResponse.ok("송금 기록이 저장되었습니다.", null);
+        return ApiResponse.ok(transferService.createTransfer(tripId, request));
     }
 
-    /** 송금 기록 삭제 */
+    @PatchMapping("/{transferId}")
+    public ApiResponse<Void> update(
+            @PathVariable Long tripId,
+            @PathVariable Long transferId,
+            @Valid @RequestBody TransferRequest.Update request) {
+        transferService.updateTransfer(tripId, transferId, request);
+        return ApiResponse.ok("송금 기록이 수정되었습니다.", null);
+    }
+
     @DeleteMapping("/{transferId}")
     public ApiResponse<Void> delete(
             @PathVariable Long tripId,

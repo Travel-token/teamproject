@@ -18,5 +18,7 @@ import java.util.List;
 public class ExpenseStatsResponse {
 
     private BigDecimal totalAmount;
+    private Integer placeCount;
+    private java.util.Map<String,BigDecimal> totalsByCurrency;
     private List<CategoryExpenseStat> categoryStats;
 }

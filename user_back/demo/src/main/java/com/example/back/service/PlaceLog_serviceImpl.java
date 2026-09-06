@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.example.back.dto.PlaceLogUpdateRequest;
 import com.example.back.dto.PlaceLog_RequestDto;
 import com.example.back.dto.PlaceLog_ResponseDto;
 import com.example.back.repository.PlaceLog_repository;
@@ -19,6 +20,7 @@ import com.example.back.vo.PlaceLog_vo;
 // visited_at이 스키마상 필수라, 비워 보내면 "지금 시각"으로 채움
 // ============================================================
 @Service
+@org.springframework.transaction.annotation.Transactional
 public class PlaceLog_serviceImpl implements PlaceLog_service {
 
     private final PlaceLog_repository placeLogRepository;
@@ -46,17 +48,17 @@ public class PlaceLog_serviceImpl implements PlaceLog_service {
             // 비워 보냈으면 = 지금 방문한 것으로
             visitedAt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
         } else if (visitedAt.matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}")) {
-            visitedAt = visitedAt + ":00";   // 초가 없으면 붙여줌
+            visitedAt = visitedAt + ":00"; // 초가 없으면 붙여줌
         } else if (!visitedAt.matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}")) {
             throw new IllegalArgumentException("방문 시각은 yyyy-MM-dd HH:mm 형식이어야 합니다.");
         }
 
         PlaceLog_vo log = new PlaceLog_vo();
         log.setTrip_id(tripId);
-        log.setPlace_id(request.getPlaceId());          // 자유 입력이면 null
+        log.setPlace_id(request.getPlaceId()); // 자유 입력이면 null
         log.setName(request.getName().trim());
         log.setMemo(request.getMemo());
-        log.setLinked_expense_id(null);                  // 지출 연동(권소희)은 이후 단계
+        log.setLinked_expense_id(null); // 지출 연동(권소희)은 이후 단계
         log.setVisited_at(visitedAt);
         log.setDetected_by_gps(Boolean.TRUE.equals(request.getDetectedByGps()) ? 1 : 0);
 
@@ -82,5 +84,52 @@ public class PlaceLog_serviceImpl implements PlaceLog_service {
     @Override
     public boolean deleteLog(Long logId) {
         return placeLogRepository.deleteLog(logId) > 0;
+    }
+
+    @Override
+    public void updateOrder(Long tripId, List<Long> placeLogIds) {
+        if (placeLogIds == null || placeLogIds.isEmpty()) {
+            throw new IllegalArgumentException("동선 순서가 비어 있습니다.");
+        }
+
+        var existing=placeLogRepository.findByTripId(tripId).stream().map(com.example.back.vo.PlaceLog_vo::getId).collect(java.util.stream.Collectors.toSet());
+        if(placeLogIds.size()!=existing.size() || !existing.equals(new java.util.HashSet<>(placeLogIds)))throw new IllegalArgumentException("전체 동선 순서를 다시 불러와 주세요.");
+        for (int index = 0; index < placeLogIds.size(); index++) {
+            Long logId = placeLogIds.get(index);
+
+            int updated = placeLogRepository.updateDisplayOrder(
+                    tripId,
+                    logId,
+                    index + 1);
+
+            if (updated == 0) {
+                throw new IllegalArgumentException(
+                        "해당 여행에 포함되지 않은 동선이 있습니다.");
+            }
+        }
+    }
+
+    @Override
+    public PlaceLog_ResponseDto updateLog(
+            Long tripId,
+            Long logId,
+            PlaceLogUpdateRequest request) {
+        if (request.getName() != null && request.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("장소명은 비워둘 수 없습니다.");
+        }
+
+        if (request.getName() != null) {
+            request.setName(request.getName().trim());
+        }
+
+        int updated = placeLogRepository.updateLog(tripId, logId, request);
+
+        if (updated == 0) {
+            throw new IllegalArgumentException("동선을 찾을 수 없습니다.");
+        }
+
+        PlaceLog_vo log = placeLogRepository.findByTripIdAndId(tripId, logId);
+
+        return PlaceLog_ResponseDto.from(log);
     }
 }

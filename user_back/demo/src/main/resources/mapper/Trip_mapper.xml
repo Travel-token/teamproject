@@ -12,9 +12,9 @@
     <insert id="insertTrip" parameterType="com.example.back.vo.Trip_vo"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO trips (name, region, start_date, end_date, budget,
-                           invite_code, status, created_by)
+                           invite_code, status, created_by, user_id)
         VALUES (#{name}, #{region}, #{start_date}, #{end_date}, #{budget},
-                #{invite_code}, #{status}, #{created_by})
+                #{invite_code}, #{status}, #{created_by}, #{created_by})
     </insert>
 
     <select id="findById" parameterType="long"

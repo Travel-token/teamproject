@@ -19,6 +19,8 @@ import java.time.LocalDate;
 public class TripHistoryResponse {
 
     private Long tripId;
+    private String currency;
+    private java.util.List<String> photoUrls;
     private String name;
     private String region;
     private LocalDate startDate;

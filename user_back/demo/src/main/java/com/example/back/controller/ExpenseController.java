@@ -24,16 +24,26 @@ public class ExpenseController {
         return ApiResponse.ok(expenseService.getExpenses(tripId));
     }
 
-    /** 지출 추가 */
+    // 지출 등록
     @PostMapping
-    public ApiResponse<Void> create(
+    public ApiResponse<ExpenseResponse.Item> create(
             @PathVariable Long tripId,
             @Valid @RequestBody ExpenseRequest.Create request) {
-        expenseService.createExpense(tripId, request);
-        return ApiResponse.ok("지출이 등록되었습니다.", null);
+        return ApiResponse.ok(
+                expenseService.createExpense(tripId, request));
     }
 
-    /** 지출 삭제 */
+    // 지출 수정
+    @PatchMapping("/{expenseId}")
+    public ApiResponse<ExpenseResponse.Item> update(
+            @PathVariable Long tripId,
+            @PathVariable Long expenseId,
+            @Valid @RequestBody ExpenseRequest.Update request) {
+        return ApiResponse.ok(
+                expenseService.updateExpense(tripId, expenseId, request));
+    }
+
+    // 지출 삭제
     @DeleteMapping("/{expenseId}")
     public ApiResponse<Void> delete(
             @PathVariable Long tripId,

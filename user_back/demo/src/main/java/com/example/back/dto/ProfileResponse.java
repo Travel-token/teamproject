@@ -10,8 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProfileResponse {
+    private Long id;
     private String name;
     private String handle;
+
     private String bank;
     private String accountNumber;
     private boolean notifSettle;

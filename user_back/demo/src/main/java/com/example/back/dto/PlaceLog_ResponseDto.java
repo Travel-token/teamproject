@@ -39,6 +39,11 @@ public class PlaceLog_ResponseDto {
     /** GPS 자동 감지 여부 (DB의 0/1을 true/false로 번역한 값) */
     private Boolean detectedByGps;
 
+    // 지도 표시용 (등록 장소가 아니면 null)
+    private Double latitude;
+    private Double longitude;
+    private String emoji;
+
     /** VO → DTO 변환 공장 */
     public static PlaceLog_ResponseDto from(PlaceLog_vo vo) {
         PlaceLog_ResponseDto dto = new PlaceLog_ResponseDto();
@@ -51,6 +56,9 @@ public class PlaceLog_ResponseDto {
         dto.visitedAt = vo.getVisited_at();
         // 0/1 → false/true 변환 (null이면 false로 처리)
         dto.detectedByGps = vo.getDetected_by_gps() != null && vo.getDetected_by_gps() == 1;
+        dto.latitude = vo.getLatitude();
+        dto.longitude = vo.getLongitude();
+        dto.emoji = vo.getPlace_emoji();
         return dto;
     }
 }

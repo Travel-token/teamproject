@@ -12,6 +12,11 @@ public class ExpenseResponse {
     @Builder
     public static class Item {
         private Long id;
+        private Long payerMemberId;
+        private String categoryCode;
+        private String splitMode;
+        private java.time.LocalDateTime spentAt;
+        private java.util.List<ExpenseRequest.SplitInput> splits;
         private String dateLabel;
         private String emoji;
         private String name;

@@ -4,16 +4,17 @@ import com.example.back.vo.Trip_vo;
 
 import lombok.Getter;
 
-/**
- * ============================================================
- * Trip_ResponseDto : 서버가 프론트로 돌려주는 "여행" 답장 상자
- * ============================================================
- */
 @Getter
+@lombok.Setter
 public class Trip_ResponseDto {
 
     /** 여행 번호 (VO의 id → 프론트에서는 tripId로 사용) */
     private Long tripId;
+    private String emoji;
+    private String currency;
+    private java.math.BigDecimal myExpense;
+    private java.math.BigDecimal totalExpense;
+    private java.util.List<String> photoUrls;
 
     /** 여행 이름 */
     private String name;
