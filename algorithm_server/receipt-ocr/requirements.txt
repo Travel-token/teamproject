@@ -1,0 +1,29 @@
+# ===================================================================
+# paddlepaddle은 CPU/GPU 버전이 달라서 여기 넣지 않았습니다.
+# 이 파일 설치 후 아래 중 하나를 별도로 실행하세요.
+#
+#   CPU:  pip install paddlepaddle
+#   GPU:  https://www.paddlepaddle.org.cn 에서 CUDA 버전에 맞는 명령 확인
+#
+# Python 3.11 권장 (3.13+ 는 paddlepaddle 미지원)
+# ===================================================================
+
+# OCR
+paddleocr>=2.9.0
+opencv-python>=4.9.0
+pillow>=10.0.0
+numpy<2.0            # paddle 계열이 numpy 2.x에서 깨지는 경우가 있음
+
+# API 서버
+fastapi>=0.115.0
+uvicorn>=0.32.0
+python-multipart>=0.0.12
+
+# 로컬 DB 테스트용 (db.py 쓸 때만 필요)
+pymysql>=1.1.0
+cryptography>=42.0
+python-dotenv>=1.0.0
+
+# 학습 데이터 준비용 (prepare_data.py 쓸 때만 필요)
+datasets>=2.19.0
+tqdm>=4.66.0

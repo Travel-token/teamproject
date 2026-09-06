@@ -1,0 +1,32 @@
+# 가상환경
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 대용량 데이터 / 학습 산출물 (커밋 금지)
+data/
+pretrain/
+output/
+inference/
+logs/
+samples/
+*.tar
+*.zip
+
+# 모델 가중치
+*.pdparams
+*.pdopt
+*.states
+*.pdmodel
+*.pdiparams
+
+# 비밀정보
+.env
+
+# OS
+.DS_Store
+Thumbs.db

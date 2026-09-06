@@ -1,8 +1,19 @@
 import * as ImagePicker from 'expo-image-picker';
 import { parseReceipt } from '../api/ocr';
 import { FontAwesome6 } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { extractReceipt } from '../api/ocr';
 import BottomSheetModal from '../components/BottomSheetModal';
 import { CancelButton, FormInput, FormRow, MemberChip, SegmentChip, SubmitButton, } from '../components/FormBits';
 import { useTheme } from '../theme/ThemeContext';
@@ -123,87 +134,149 @@ function SpendTab({ members, initial, tripId, currency = "KRW", onSubmit, onClos
     onSubmit: (v: ExpenseFormValue) => void | Promise<void>;
     onClose: () => void | Promise<void>;
 }) {
-    const { colors } = useTheme();
-    const { showToast } = useToast();
-    const [ocrBusy, setOcrBusy] = useState(false);
-    const scanReceipt = async () => {
-        if (!tripId || ocrBusy)
-            return;
-        setOcrBusy(true);
-        try {
-            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!permission.granted) {
-                showToast('사진 접근 권한이 필요해요');
-                return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-            if (result.canceled)
-                return;
-            const parsed = await parseReceipt(tripId, result.assets[0]);
-            setName(parsed.name);
-            setAmount(String(parsed.amount));
-            if (parsed.spentAt)
-                setDateLabel(parsed.spentAt);
-            if (parsed.categoryCode)
-                setCategoryCode(parsed.categoryCode);
-            showToast('인식 결과를 확인한 뒤 지출을 저장해 주세요');
-        }
-        catch (e) {
-            showToast(apiError(e));
-        }
-        finally {
-            setOcrBusy(false);
-        }
-    };
-    const [name, setName] = useState(initial?.name ?? '');
-    const [emoji, setEmoji] = useState(initial?.emoji ?? EMOJI_OPTIONS[0]);
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const [amount, setAmount] = useState(initial?.amount ?? '');
-    const [payer, setPayer] = useState(initial?.payerName ?? members[0]?.id ?? '');
-    const [participants, setParticipants] = useState<string[]>(initial?.participants ?? members.map((m) => m.id));
-    const [splitMode, setSplitMode] = useState<SplitMode>(initial?.splitMode ?? 'even');
-    const [manualAmounts, setManualAmounts] = useState<Record<string, string>>(initial?.manualAmounts ?? {});
-    const [percentAmounts, setPercentAmounts] = useState<Record<string, string>>(initial?.percentAmounts ?? {});
-    const [dateLabel, setDateLabel] = useState(initial?.dateLabel ?? new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-    const [memo, setMemo] = useState(initial?.memo ?? '');
-    const [categoryCode, setCategoryCode] = useState(initial?.categoryCode ?? 'meal');
-    const totalNum = Number(amount) || 0;
-    const participantCount = participants.length;
-    // 유효성
-    const manualSum = participants.reduce((s, id) => s + (Number(manualAmounts[id]) || 0), 0);
-    const percentSum = participants.reduce((s, id) => s + (Number(percentAmounts[id]) || 0), 0);
-    const manualOk = splitMode !== 'manual' || manualSum === totalNum;
-    const percentOk = splitMode !== 'percent' || percentSum === 100;
-    const toggleParticipant = (name: string) => {
-        setParticipants((prev) => prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]);
-    };
-    const handleSubmit = () => {
-        if (!amount || Number(amount) <= 0)
-            return;
-        onSubmit({
-            name: name.trim() || '새 지출',
-            emoji,
-            amount,
-            payerName: payer,
-            participants,
-            splitMode,
-            manualAmounts,
-            percentAmounts,
-            dateLabel,
-            memo,
-            categoryCode,
-        });
-    };
-    return (<ScrollView showsVerticalScrollIndicator={false}>
-      {/* OCR 영역 — PaddleOCR 구현 전 placeholder */}
-      <Pressable onPress={scanReceipt} disabled={ocrBusy} style={[styles.receiptArea, { borderColor: colors.bdDashed }]}>
-        <FontAwesome6 name="camera" size={18} color={colors.txMuted}/>
-        <Text style={[styles.receiptText, { color: colors.txMuted }]}>
-          영수증 사진으로 자동 입력
-        </Text>
-        <Text style={[styles.receiptSub, { color: colors.txPlaceholder }]}>
-          {ocrBusy ? '영수증 인식 중...' : '영수증 사진으로 입력'}
-        </Text>
+  const { colors } = useTheme();
+
+  const [name, setName] = useState('');
+  const [emoji, setEmoji] = useState(EMOJI_OPTIONS[0]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [payer, setPayer] = useState(members[0]?.name ?? '나');
+  const [participants, setParticipants] = useState<string[]>(members.map((m) => m.name));
+  const [splitMode, setSplitMode] = useState<SplitMode>('even');
+  const [manualAmounts, setManualAmounts] = useState<Record<string, string>>({});
+  const [percentAmounts, setPercentAmounts] = useState<Record<string, string>>({});
+  const [dateLabel, setDateLabel] = useState(todayLabel());
+  const [memo, setMemo] = useState('');
+
+  
+  // ───────── OCR ─────────
+  const [ocrLoading, setOcrLoading] = useState(false);
+
+  // OCR 카테고리 코드 -> 앱 이모지 매핑
+  const CATEGORY_EMOJI: Record<string, string> = {
+    meal: '🍜',
+    cafe: '☕',
+    shop: '🛒',
+    trans: '🚕',
+    ticket: '🎫',
+  };
+
+  // "2026-04-06 15:15:00" -> "04월 06일 15:15"
+  const formatSpentAt = (raw: string): string => {
+    const m = raw.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+    if (!m) return todayLabel();
+    const [, , mm, dd, hh, min] = m;
+    return `${mm}월 ${dd}일 ${hh}:${min}`;
+  };
+
+  const handleReceiptScan = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('권한 필요', '사진 접근 권한을 허용해주세요.');
+      return;
+    }
+
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (picked.canceled) return;
+
+    setOcrLoading(true);
+    try {
+      const result = await extractReceipt(picked.assets[0].uri);
+
+      // 인식된 값만 채우고, 못 읽은 필드는 기존 값 유지
+      if (result.name) setName(result.name);
+      if (result.amount != null) setAmount(String(result.amount));
+      if (result.spentAt) setDateLabel(formatSpentAt(result.spentAt));
+      if (result.categoryCode && CATEGORY_EMOJI[result.categoryCode]) {
+        setEmoji(CATEGORY_EMOJI[result.categoryCode]);
+      }
+
+      const missing: string[] = [];
+      if (!result.name) missing.push('상호명');
+      if (result.amount == null) missing.push('금액');
+      if (!result.spentAt) missing.push('날짜');
+
+      if (missing.length > 0) {
+        Alert.alert('일부 인식 실패', `${missing.join(', ')}은(는) 직접 입력해주세요.`);
+      }
+    } catch (e: any) {
+      Alert.alert(
+        '인식 실패',
+        'OCR 서버에 연결할 수 없습니다.\n서버가 켜져 있는지, 같은 와이파이인지 확인해주세요.'
+      );
+      console.error('OCR error:', e?.message ?? e);
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  const totalNum = Number(amount) || 0;
+  const participantCount = participants.length;
+
+  // 유효성
+  const manualSum = sumManual(manualAmounts);
+  const percentSum = sumPercent(percentAmounts);
+  const manualOk = splitMode !== 'manual' || manualSum === totalNum;
+  const percentOk = splitMode !== 'percent' || percentSum === 100;
+
+  const toggleParticipant = (name: string) => {
+    setParticipants((prev) =>
+      prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]
+    );
+  };
+
+  const handleSubmit = () => {
+    if (!amount || Number(amount) <= 0) return;
+    onSubmit({
+      name: name.trim() || '새 지출',
+      emoji,
+      amount,
+      payerName: payer,
+      participants,
+      splitMode,
+      manualAmounts,
+      percentAmounts,
+      dateLabel,
+      memo,
+    });
+    onClose();
+  };
+
+  return (
+    <ScrollView showsVerticalScrollIndicator={false}>
+            {/* OCR 영역 */}
+      <Pressable
+        onPress={handleReceiptScan}
+        disabled={ocrLoading}
+        style={[
+          styles.receiptArea,
+          { borderColor: colors.bdDashed, opacity: ocrLoading ? 0.6 : 1 },
+        ]}
+      >
+        {ocrLoading ? (
+          <>
+            <ActivityIndicator size="small" color={colors.txMuted} />
+            <Text style={[styles.receiptText, { color: colors.txMuted }]}>
+              영수증 인식 중...
+            </Text>
+            <Text style={[styles.receiptSub, { color: colors.txPlaceholder }]}>
+              최대 1분 정도 걸릴 수 있어요
+            </Text>
+          </>
+        ) : (
+          <>
+            <FontAwesome6 name="camera" size={18} color={colors.txMuted} />
+            <Text style={[styles.receiptText, { color: colors.txMuted }]}>
+              영수증 사진으로 자동 입력
+            </Text>
+            <Text style={[styles.receiptSub, { color: colors.txPlaceholder }]}>
+              탭해서 사진 선택
+            </Text>
+          </>
+        )}
       </Pressable>
 
       {/* 지출 이름 + 이모지 */}
