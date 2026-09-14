@@ -13,10 +13,11 @@ This directory runs the backend, MySQL, recommendation service, OCR service, and
 
 ## First deployment
 
-1. Clone the repository to `/opt/travel-settle`.
-2. Copy `.env.production.example` to `.env.production` and enter newly issued secrets.
-3. On the Windows development PC, run `export-local-db.ps1`. Transfer the generated, Git-ignored `mysql-init/001_schema_and_seed.sql` to the same path on the server before first startup. It may contain user data, so do not commit it.
-4. Validate and start the stack.
+1. Copy `provision-ubuntu.sh` to the VM and run `sudo bash provision-ubuntu.sh` once.
+2. Clone the repository to `/opt/travel-settle`.
+3. Copy `.env.production.example` to `.env.production` and enter newly issued secrets.
+4. On the Windows development PC, run `export-local-db.ps1`. Transfer the generated, Git-ignored `mysql-init/001_schema_and_seed.sql` to the same path on the server before first startup. It may contain user data, so do not commit it.
+5. Validate and start the stack.
 
 ```bash
 cd /opt/travel-settle/user_front/deploy
