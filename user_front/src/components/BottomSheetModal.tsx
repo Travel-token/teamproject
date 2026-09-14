@@ -17,6 +17,7 @@ import { useTheme } from '../theme/ThemeContext';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  onClosed?: () => void;
   title?: string;
   children: React.ReactNode;
   maxHeightPct?: number;
@@ -24,7 +25,7 @@ interface Props {
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
-export default function BottomSheetModal({ visible, onClose, title, children, maxHeightPct = 85 }: Props) {
+export default function BottomSheetModal({ visible, onClose, onClosed, title, children, maxHeightPct = 85 }: Props) {
   const { colors } = useTheme();
 
   // Modal 자체는 visible이 false로 바뀌어도 닫힘 애니메이션이 끝날 때까지 계속 마운트해야 자연스럽습니다.
@@ -71,9 +72,23 @@ export default function BottomSheetModal({ visible, onClose, title, children, ma
         if (finished) setMounted(false);
       });
     }
+    return () => { translateY.stopAnimation(); overlayOpacity.stopAnimation(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
+  const closedCallback = useRef(onClosed);
+  closedCallback.current = onClosed;
+  const previouslyMounted = useRef(mounted);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (previouslyMounted.current && !mounted) {
+      // Android 네이티브 Modal 창이 실제 WindowManager에서 제거된 다음
+      // 후속 Modal을 열어 BadToken/앱 종료를 피한다.
+      timer = setTimeout(() => closedCallback.current?.(), Platform.OS === 'android' ? 320 : 0);
+    }
+    previouslyMounted.current = mounted;
+    return () => { if (timer) clearTimeout(timer); };
+  }, [mounted]);
   if (!mounted) return null;
 
   return (
@@ -99,7 +114,7 @@ export default function BottomSheetModal({ visible, onClose, title, children, ma
           >
             <View style={[styles.handle, { backgroundColor: colors.bdCard }]} />
             {title ? <Text style={[styles.title, { color: colors.txPrimary }]}>{title}</Text> : null}
-            <ScrollView showsVerticalScrollIndicator={false}>{children}</ScrollView>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>{children}</ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
       </View>

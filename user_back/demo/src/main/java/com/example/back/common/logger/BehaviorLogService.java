@@ -1,78 +1,16 @@
 package com.example.back.common.logger;
-
-import java.time.LocalDateTime;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.slf4j.*;
 import org.springframework.stereotype.Service;
-
-// 피드 관련 행동 로그 
-
-@Service
-public class BehaviorLogService {
-        private static final Logger behaviorLogger = LoggerFactory.getLogger("BEHAVIOR");
-
-        // 피드 조회
-        public void feedView(Long userId, Long feedId) {
-                behaviorLogger.info(
-                                createLog(
-                                                userId,
-                                                "FEED_VIEW",
-                                                feedId));
-
-        }
-
-        // 피드 좋아요
-        public void feedLike(Long userId, Long feedId) {
-                behaviorLogger.info(
-                                createLog(
-                                                userId,
-                                                "FEED_LIKE",
-                                                feedId));
-
-        }
-
-        // 피드 클릭
-        public void feedClick(Long userId, Long feedId) {
-                behaviorLogger.info(
-                                createLog(
-                                                userId,
-                                                "FEED_CLICK",
-                                                feedId));
-
-        }
-
-        // 피드 생성
-        public void feedCreate(Long userId, Long feedId) {
-                behaviorLogger.info(
-                                createLog(
-                                                userId,
-                                                "FEED_CREATE",
-                                                feedId));
-
-        }
-
-        // 피드 수정
-        public void feedUpdate(Long userId, Long feedId) {
-                behaviorLogger.info(
-                                createLog(
-                                                userId,
-                                                "FEED_UPDATE",
-                                                feedId));
-
-        }
-
-        private String createLog(
-                        Long userId,
-                        String event,
-                        Long feedId) {
-
-                return String.format(
-                                "{\"timestamp\":\"%s\",\"userId\":%d,\"event\":\"%s\",\"feedId\":%d}",
-                                LocalDateTime.now(),
-                                userId,
-                                event,
-                                feedId);
-        }
-
+import com.example.back.recommendation.RecommendationService;
+import lombok.RequiredArgsConstructor;
+@Service @RequiredArgsConstructor public class BehaviorLogService {
+ private static final Logger log=LoggerFactory.getLogger("BEHAVIOR"); private final RecommendationService recommendations; private final org.springframework.jdbc.core.JdbcTemplate db;
+ public void feedView(Long u,Long f){event(u,"FEED_VIEW",f);} public void feedLike(Long u,Long f){event(u,"FEED_LIKE",f);}
+ public void feedClick(Long u,Long f){event(u,"FEED_CLICK",f);} public void feedCreate(Long u,Long f){event(u,"FEED_CREATE",f);}
+ public void feedUpdate(Long u,Long f){event(u,"FEED_UPDATE",f);}
+ private void event(Long u,String e,Long f){log.info("userId={} event={} feedId={}",u,e,f); try{
+  var rows=db.queryForList("SELECT p.category,p.address FROM feed_posts f JOIN places p ON p.id=f.place_id WHERE f.id=?",f);
+  String category=rows.isEmpty()?null:(String)rows.get(0).get("category"); String address=rows.isEmpty()?null:(String)rows.get(0).get("address");
+  recommendations.sendEvent(u,e,f,category,address);
+ }catch(Exception ignored){log.warn("Recommendation event delivery failed: {}",e);}}
 }

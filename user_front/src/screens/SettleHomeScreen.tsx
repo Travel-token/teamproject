@@ -32,21 +32,16 @@ export default function SettleHomeScreen({ navigation }: Props) {
     const { showToast } = useToast();
     const [notifOpen, setNotifOpen] = useState(false), [hasUnread, setHasUnread] = useState(false), [joinOpen, setJoinOpen] = useState(false), [inviteCode, setInviteCode] = useState('');
     const loadNotifs = () => fetchNotifications().then(v => setHasUnread(v.some(n => !n.read))).catch(() => { });
-    useFocusEffect(useCallback(() => { loadNotifs(); fetchTrips().then(setTrips).catch(e => showToast(apiError(e))); }, []));
+    useFocusEffect(useCallback(() => {
+        let active = true;
+        loadNotifs();
+        fetchTrips().then(list => { if (active) setTrips(list); }).catch(e => showToast(apiError(e)));
+        return () => { active = false; };
+    }, []));
     const [trips, setTrips] = useState<Trip[]>([]);
-    const activeTrip = trips.find((trip) => trip.status === '진행 중');
+    // 진행 중 여행이 없어도 최근 완료 여행의 정산 화면에 다시 들어갈 수 있어야 한다.
+    const activeTrip = trips.find((trip) => trip.status === '진행 중') ?? trips[0];
     const [modalVisible, setModalVisible] = useState(false);
-    useEffect(() => {
-        (async () => {
-            try {
-                const list = await fetchTrips();
-                setTrips(list);
-            }
-            catch (e) {
-                console.warn('[trip] 목록 조회 실패', e);
-            }
-        })();
-    }, []);
     // "OO시 기준" 표시용 행정구역. GPS 권한 요청 자체는 여기서 하지 않는다 —
     // 권한 요청은 마이페이지의 GPS 토글에서만 하도록 몰아뒀고, 여기서는 이미
     // 허용된 상태인지만 확인해서 좌표를 읽는다.
@@ -156,7 +151,7 @@ export default function SettleHomeScreen({ navigation }: Props) {
               <Text style={styles.oweEmoji}>💸</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.oweLabel, { color: colors.txOweLabel }]}>
-                  정산 내역 보기
+                  {activeTrip.status === '완료' ? '완료된 정산 다시 보기' : '정산 내역 보기'}
                 </Text>
                 <Text style={[styles.oweAmount, { color: colors.txOweAmount }]}>
                   {formatMoney(activeTrip.myExpense, activeTrip.currency)}
@@ -175,7 +170,7 @@ export default function SettleHomeScreen({ navigation }: Props) {
           </>)}
 
         <View style={styles.sectionHd}>
-          <Text style={[styles.sectionTitle, { color: colors.txPrimary }]}>진행 중인 여행</Text>
+          <Text style={[styles.sectionTitle, { color: colors.txPrimary }]}>여행 목록</Text>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tripScroll}>
@@ -185,7 +180,7 @@ export default function SettleHomeScreen({ navigation }: Props) {
 
       <SubmitButton label="초대 코드로 참여" onPress={() => setJoinOpen(true)}/>
       <NotificationsModal visible={notifOpen} onClose={() => setNotifOpen(false)} onRead={loadNotifs}/>
-      <BottomSheetModal visible={joinOpen} onClose={() => setJoinOpen(false)} title="초대 코드로 참여"><FormInput value={inviteCode} onChangeText={setInviteCode} placeholder="TT-초대코드"/><SubmitButton label="참여" onPress={async () => {
+      <BottomSheetModal visible={joinOpen} onClose={() => setJoinOpen(false)} title="초대 코드로 참여"><FormInput value={inviteCode} onChangeText={text => setInviteCode(text.trim().toUpperCase())} autoCapitalize="characters" placeholder="TT-A3K9PQ"/><SubmitButton label="참여" disabled={!/^TT-[A-Z0-9]{6}$/.test(inviteCode)} onPress={async () => {
             try {
                 await api.post('/api/trips/join', { inviteCode });
                 setTrips(await fetchTrips());

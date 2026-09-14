@@ -24,7 +24,7 @@ export default function FeedRecommendModal({ visible, onClose, onCreateFeeds, tr
     const { showToast } = useToast();
     const [placeQuery, setPlaceQuery] = useState('');
     const [placeResults, setPlaceResults] = useState<PlaceSearchItem[]>([]);
-    const [fallbackPlace, setFallbackPlace] = useState<number | undefined>();
+    const [fallbackPlace, setFallbackPlace] = useState<PlaceSearchItem | undefined>();
     const [items, setItems] = useState<RecoItem[]>([]);
     const [checked, setChecked] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -53,9 +53,13 @@ export default function FeedRecommendModal({ visible, onClose, onCreateFeeds, tr
     const handleSubmit = async () => {
         if (submitting)
             return;
+        if (checked.some(id => items.find(item => item.id === id)?.placeId == null) && !fallbackPlace) {
+            showToast('장소가 없는 초안에 사용할 여행지를 먼저 선택해 주세요.');
+            return;
+        }
         setSubmitting(true);
         try {
-            const results = await Promise.allSettled(checked.map(id => { const item = items.find(i => i.id === id)!; return adoptRecommendation(id, item.caption, item.placeId ?? fallbackPlace); }));
+            const results = await Promise.allSettled(checked.map(id => { const item = items.find(i => i.id === id)!; return adoptRecommendation(id, item.caption, item.placeId ?? fallbackPlace?.id ?? undefined, fallbackPlace?.externalApiId); }));
             const done = checked.filter((_, i) => results[i].status === 'fulfilled');
             setItems(prev => prev.filter(i => !done.includes(i.id)));
             setChecked(prev => prev.filter(id => !done.includes(id)));
@@ -82,7 +86,7 @@ export default function FeedRecommendModal({ visible, onClose, onCreateFeeds, tr
                 catch (e) {
                     showToast(apiError(e));
                 }
-            }} placeholder="장소 검색" style={{ color: colors.txPrimary, padding: 12 }}/>{placeResults.map(p => <Pressable key={p.id} onPress={() => { setFallbackPlace(p.id); setPlaceQuery(p.name); setPlaceResults([]); }}><Text style={{ padding: 8, color: colors.txPrimary }}>{p.name}</Text></Pressable>)}</View>}
+            }} placeholder="장소 검색" style={{ color: colors.txPrimary, padding: 12 }}/>{placeResults.map(p => <Pressable key={p.externalApiId ?? String(p.id)} onPress={() => { setFallbackPlace(p); setPlaceQuery(p.name); setPlaceResults([]); }}><Text style={{ padding: 8, color: colors.txPrimary }}>{p.name}</Text></Pressable>)}</View>}
             {loading ? (<View style={styles.center}>
                     <ActivityIndicator />
                     <Text style={[styles.hint, { color: colors.txMuted }]}>추천을 불러오는 중...</Text>
@@ -104,7 +108,7 @@ export default function FeedRecommendModal({ visible, onClose, onCreateFeeds, tr
 
             <View style={styles.actions}>
                 <CancelButton onPress={onClose} label="닫기"/>
-                <SubmitButton disabled={submitting || !checked.length} onPress={handleSubmit} label={submitting ? '처리 중...' : `피드 ${checked.length}개 만들기`}/>
+                <SubmitButton disabled={submitting || !checked.length || (checked.some(id => items.find(item => item.id === id)?.placeId == null) && !fallbackPlace)} onPress={handleSubmit} label={submitting ? '처리 중...' : `피드 ${checked.length}개 만들기`}/>
             </View>
         </BottomSheetModal>);
 }

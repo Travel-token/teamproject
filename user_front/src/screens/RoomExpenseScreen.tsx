@@ -1,7 +1,7 @@
 import { FontAwesome6 } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, TextInput } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FormInput } from '../components/FormBits';
 import Fab from '../components/Fab';
@@ -21,9 +21,11 @@ import { addPlaceItem, deletePlaceLog, fetchPlaceItems, } from '../api/trip';
 type Props = NativeStackScreenProps<RootStackParamList, 'RoomExpense'>;
 type SubTab = 'spend' | 'place' | 'transfer';
 export default function RoomExpenseScreen({ route, navigation }: Props) {
+    const [contentError, setContentError] = useState('');
+    const [reloadKey, setReloadKey] = useState(0);
     useEffect(() => {
         let alive = true;
-        Promise.all([
+        Promise.allSettled([
             fetchExpenses(route.params.tripId),
             fetchPlaceItems(route.params.tripId),
             fetchTransfers(route.params.tripId),
@@ -31,25 +33,20 @@ export default function RoomExpenseScreen({ route, navigation }: Props) {
             .then(([nextExpenses, nextPlaces, nextTransfers]) => {
             if (!alive)
                 return;
-            setExpenses(nextExpenses);
-            setPlaceList(nextPlaces);
-            setTransferList(nextTransfers);
-        })
-            .catch(() => {
-            if (!alive)
-                return;
-            setExpenses([]);
-            setPlaceList([]);
-            setTransferList([]);
+            if (nextExpenses.status === 'fulfilled') setExpenses(nextExpenses.value);
+            if (nextPlaces.status === 'fulfilled') setPlaceList(nextPlaces.value);
+            if (nextTransfers.status === 'fulfilled') setTransferList(nextTransfers.value);
+            const failed = [nextExpenses, nextPlaces, nextTransfers].filter(result => result.status === 'rejected').length;
+            setContentError(failed ? `일부 내역을 불러오지 못했어요 (${failed}/3)` : '');
         });
         return () => {
             alive = false;
         };
-    }, [route.params.tripId]);
+    }, [route.params.tripId, reloadKey]);
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
     const { showToast } = useToast();
-    const { trip, patchLocal, saveTrip, endTrip, removeTrip } = useTripDetail(route.params.tripId);
+    const { trip, loading, error: tripError, reload: reloadTrip, patchLocal, saveTrip, endTrip, removeTrip } = useTripDetail(route.params.tripId);
     const [subTab, setSubTab] = useState<SubTab>('spend');
     const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
     const [placeList, setPlaceList] = useState<PlaceItem[]>([]);
@@ -178,6 +175,10 @@ export default function RoomExpenseScreen({ route, navigation }: Props) {
 
             <TripHero trip={trip}/>
             <RoomTabBar active="expense" onChange={onRoomTabChange}/>
+
+            {loading && <ActivityIndicator style={{ paddingVertical: 12 }} color={colors.txPrimary}/>} 
+            {!!tripError && <View style={styles.loadError}><Text style={{ color: colors.danger }}>{tripError}</Text><Pressable onPress={() => { reloadTrip(); setReloadKey(key => key + 1); }}><Text style={{ color: colors.txPrimary, fontWeight: '700' }}>다시 불러오기</Text></Pressable></View>}
+            {!!contentError && <View style={styles.loadError}><Text style={{ color: colors.danger }}>{contentError}</Text><Pressable onPress={() => setReloadKey(key => key + 1)}><Text style={{ color: colors.txPrimary, fontWeight: '700' }}>다시 불러오기</Text></Pressable></View>}
 
             <View style={[styles.subTabRow, { borderBottomColor: colors.bdCard }]}>
                 <SubTab label="💳 지출" active={subTab === 'spend'} changeSubTab={() => changeSubTab('spend')}/>
@@ -363,6 +364,7 @@ function SubTab({ label, active, changeSubTab }: {
 }
 const styles = StyleSheet.create({
     screen: { flex: 1 },
+    loadError: { paddingHorizontal: 20, paddingVertical: 10, gap: 6 },
     topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
     backBtn: { marginRight: 10 },
     tripHead: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginLeft: 2 },

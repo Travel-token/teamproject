@@ -1,5 +1,5 @@
+import { logoutSession } from '../services/authSession';
 import { api } from './client';
-import { removeToken } from '../services/tokenService';
 import { HistoryTrip } from '../types';
 // ── 프로필 ──────────────────────────────
 export interface ProfileResponse {
@@ -73,7 +73,14 @@ export async function fetchMyFeeds(): Promise<MyFeedItem[]> {
 }
 // 생성 시엔 FeedCreateRequest(placeId, caption, photoUrls)와 동일
 export interface MyFeedCreatePayload {
-    placeId: number;
+    placeId?: number | null;
+    externalApiId?: string | null;
+    placeName?: string;
+    address?: string | null;
+    category?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    thumbnailUrl?: string | null;
     caption: string;
     photoUrls?: string[];
 }
@@ -181,13 +188,8 @@ export async function fetchHistoryTrips(query?: string): Promise<HistoryTrip[]> 
 }
 // ── 계정 ──────────────────────────────
 export async function logout(): Promise<void> {
-    try {
-        await api.post('/api/auth/logout');
-    }
-    finally {
-        // 서버 호출 성공 여부와 무관하게 로컬 토큰은 항상 지운다.
-        await removeToken();
-    }
+    // 기기 연결 해제 및 토큰 삭제는 sessionActions.endSession에서 순서대로 수행한다.
+    await logoutSession();
 }
 export async function withdrawAccount(): Promise<void> {
     await api.delete('/api/users/me');

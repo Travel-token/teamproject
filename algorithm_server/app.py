@@ -1,63 +1,42 @@
-from flask import Flask, request, jsonify
-
+import hmac
+import os
+from flask import Flask, jsonify, request
 from recommendation_service import RecommendationService
 
-app = Flask(__name__)
+app=Flask(__name__)
+service=RecommendationService()
+api_key=os.getenv("RECOMMENDATION_API_KEY","")
 
-recommendation_service = RecommendationService()
+@app.before_request
+def authenticate():
+    if request.path == "/health" or not api_key: return None
+    supplied=request.headers.get("X-Recommendation-Key","")
+    if not hmac.compare_digest(api_key,supplied): return jsonify({"message":"unauthorized"}),401
 
+@app.get("/health")
+def health(): return jsonify({"ok":True})
 
-@app.route("/recommendation/user/login", methods=["POST"])
-def user_login():
+@app.post("/recommendation/user/login")
+def login():
+    data=request.get_json(silent=True) or {}
+    if data.get("userId") is None: return jsonify({"message":"userId is required"}),400
+    service.register_user(data["userId"]); return jsonify({"success":True})
 
-    data = request.get_json()
+@app.post("/recommend/logs")
+def logs():
+    data=request.get_json(silent=True) or {}; values=data.get("logs",[])
+    if not isinstance(values,list) or not values: return jsonify({"message":"logs is required"}),400
+    return jsonify({"success":True,"count":sum(service.process_event(x) for x in values if isinstance(x,dict))})
 
-    user_id = data.get("userId")
+@app.post("/recommend")
+def recommend():
+    data=request.get_json(silent=True) or {}
+    if data.get("userId") is None or not isinstance(data.get("candidates"),list): return jsonify({"message":"userId and candidates are required"}),400
+    return jsonify({"items":service.recommend(data["userId"],data["candidates"],data.get("limit",10),data.get("currentRegion"))})
 
-    if user_id is None:
-        return jsonify({
-            "success": False,
-            "message": "userId is required"
-        }), 400
+@app.post("/caption")
+def caption():
+    data=request.get_json(silent=True) or {}
+    return jsonify({"caption":service.caption(data.get("tripName"),data.get("region"),data.get("places",[]))})
 
-    print(f"[LOGIN] userId={user_id}")
-
-    recommendation_service.register_user(user_id)
-
-    return jsonify({
-        "success": True,
-        "userId": user_id
-    }), 200
-
-
-@app.route("/recommend/logs", methods=["POST"])
-def receive_logs():
-
-    data = request.get_json()
-
-    logs = data.get("logs", [])
-
-    if not logs:
-        return jsonify({
-            "success": False,
-            "message": "logs is required"
-        }), 400
-
-    print(f"[LOG RECEIVE] count={len(logs)}")
-
-    for event in logs:
-        recommendation_service.process_event(event)
-
-    return jsonify({
-        "success": True,
-        "count": len(logs)
-    }), 200
-
-
-if __name__ == "__main__":
-
-    app.run(
-        host="0.0.0.0",
-        port=5050,
-        debug=True
-    )
+if __name__=="__main__": app.run(host=os.getenv("RECOMMENDATION_HOST","127.0.0.1"),port=int(os.getenv("RECOMMENDATION_PORT","5050")),debug=False)

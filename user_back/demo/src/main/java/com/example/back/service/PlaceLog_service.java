@@ -15,7 +15,7 @@ public interface PlaceLog_service {
 
     List<PlaceLog_ResponseDto> getLogs(Long tripId);
 
-    boolean deleteLog(Long logId);
+    boolean deleteLog(Long tripId, Long logId);
 
     void updateOrder(Long tripId, List<Long> placeLogIds);
 

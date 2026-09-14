@@ -43,9 +43,10 @@
         ORDER BY l.display_order ASC, l.visited_at ASC, l.id ASC
     </select>
 
-    <delete id="deleteLog" parameterType="long">
+    <delete id="deleteLog">
         DELETE FROM trip_place_logs
-        WHERE id = #{id}
+        WHERE trip_id = #{tripId}
+        AND id = #{logId}
     </delete>
 
 

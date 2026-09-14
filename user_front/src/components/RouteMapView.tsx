@@ -3,7 +3,7 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useTheme } from '../theme/ThemeContext';
 import { PlaceItem } from '../types';
-import { DARK_MAP_STYLE, LIGHT_MAP_STYLE } from '../config/mapStyle';
+
 
 interface Props {
     spots: PlaceItem[];
@@ -15,7 +15,7 @@ export default function RouteMapView({ spots, height = 260 }: Props) {
     const mapRef = useRef<MapView>(null);
 
     const routable = spots.filter(
-        (s): s is PlaceItem & { lat: number; lng: number } => s.lat != null && s.lng != null
+        (s): s is PlaceItem & { lat: number; lng: number } => Number.isFinite(s.lat) && Number.isFinite(s.lng) && Math.abs(s.lat) <= 90 && Math.abs(s.lng) <= 180
     );
 
     // id:lat,lng를 순서대로 이어붙인 키. 순서가 바뀌거나 좌표가 바뀔 때만 값이 달라져서
@@ -28,6 +28,8 @@ export default function RouteMapView({ spots, height = 260 }: Props) {
     );
 
     const [mapReady, setMapReady] = useState(false);
+    const [layoutReady, setLayoutReady] = useState(false);
+    const [mapLoaded, setMapLoaded] = useState(false);
 
     // 지도 레이아웃 완료 전 fitToCoordinates 호출 시 "Map size can't be 0" 에러 발생.
     // onMapReady 이후에만 카메라를 맞춘다.
@@ -37,8 +39,8 @@ export default function RouteMapView({ spots, height = 260 }: Props) {
         if (routable.length === 1) {
             mapRef.current.animateToRegion(
                 {
-                    latitude: routable[0].lat,
-                    longitude: routable[0].lng,
+                    latitude: routable[0]?.lat ?? 36.3,
+                    longitude: routable[0]?.lng ?? 127.8,
                     latitudeDelta: 0.02,
                     longitudeDelta: 0.02,
                 },
@@ -55,27 +57,12 @@ export default function RouteMapView({ spots, height = 260 }: Props) {
     }, [coordKey, lineCoords]);
 
     useEffect(() => {
-        if (!mapReady) return;
+        if (!mapReady || !layoutReady) return;
         fitCamera();
-    }, [mapReady, coordKey, fitCamera]);
-
-    if (routable.length === 0) {
-        return (
-            <View
-                style={[
-                    styles.wrap,
-                    styles.emptyWrap,
-                    { height, backgroundColor: colors.bgCard2, borderColor: colors.bdCard },
-                ]}
-            >
-                <Text style={{ fontSize: 22 }}>🗺️</Text>
-                <Text style={{ fontSize: 12, color: colors.txMuted, marginTop: 6 }}>표시할 위치 정보가 없어요</Text>
-            </View>
-        );
-    }
+    }, [mapReady, layoutReady, coordKey, fitCamera]);
 
     return (
-        <View style={[styles.wrap, { height, borderColor: colors.bdCard }]}>
+        <View style={[styles.wrap, { height, borderColor: colors.bdCard }]} onLayout={({ nativeEvent }) => setLayoutReady(nativeEvent.layout.width > 0 && nativeEvent.layout.height > 0)}>
             <MapView
                 ref={mapRef}
                 style={StyleSheet.absoluteFill}
@@ -86,10 +73,10 @@ export default function RouteMapView({ spots, height = 260 }: Props) {
                 customMapStyle={[]}
                 userInterfaceStyle={isDark ? 'dark' : 'light'}
                 initialRegion={{
-                    latitude: routable[0].lat,
-                    longitude: routable[0].lng,
-                    latitudeDelta: 0.05,
-                    longitudeDelta: 0.05,
+                    latitude: routable[0]?.lat ?? 36.3,
+                    longitude: routable[0]?.lng ?? 127.8,
+                    latitudeDelta: routable.length ? 0.05 : 5,
+                    longitudeDelta: routable.length ? 0.05 : 5,
                 }}
                 scrollEnabled
                 zoomEnabled
@@ -100,6 +87,7 @@ export default function RouteMapView({ spots, height = 260 }: Props) {
                 toolbarEnabled={false}
                 showsMyLocationButton={false}
                 onMapReady={() => setMapReady(true)}
+                onMapLoaded={() => setMapLoaded(true)}
             >
                 {lineCoords.length > 1 && (
                     <Polyline
@@ -118,7 +106,7 @@ export default function RouteMapView({ spots, height = 260 }: Props) {
                             key={s.id}
                             coordinate={{ latitude: s.lat, longitude: s.lng }}
                             anchor={{ x: 0.5, y: 0.5 }}
-                            tracksViewChanges={false}
+                            tracksViewChanges={!mapLoaded}
                         >
                             <View
                                 style={[
@@ -135,12 +123,15 @@ export default function RouteMapView({ spots, height = 260 }: Props) {
                     );
                 })}
             </MapView>
+            {routable.length === 0 && <View pointerEvents="none" style={styles.loadingBadge}><Text style={styles.loadingText}>검색 결과에서 장소를 선택하면 동선이 표시됩니다</Text></View>}
+            {routable.length > 0 && mapReady && !mapLoaded && <View pointerEvents="none" style={styles.loadingBadge}><Text style={styles.loadingText}>지도 불러오는 중…</Text></View>}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     wrap: {
+        flexShrink: 0,
         marginHorizontal: 20,
         marginBottom: 16,
         borderRadius: 20,
@@ -157,4 +148,7 @@ const styles = StyleSheet.create({
         borderWidth: 2,
     },
     markerText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+    loadingBadge: { position: 'absolute', left: 12, bottom: 12, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.65)' },
+    loadingText: { color: '#FFFFFF', fontSize: 11 },
 });
+

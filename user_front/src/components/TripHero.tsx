@@ -14,6 +14,13 @@ export default function TripHero({ trip }: {
       </View>
       <Text style={styles.name}>{trip.name}</Text>
       <Text style={[styles.date, { color: colors.txHeroSub }]}>{trip.dateLabel}</Text>
+      {trip.members.length > 0 && <View style={styles.membersRow}>
+        {trip.members.slice(0, 5).map(member => <View key={member.id} style={styles.memberChip}>
+          <Text style={styles.memberAvatar}>{(member.name || '멤버').slice(0, 2)}</Text>
+          <Text style={styles.memberName} numberOfLines={1}>{member.name || '멤버'}</Text>
+        </View>)}
+        {trip.members.length > 5 && <Text style={styles.moreMembers}>+{trip.members.length - 5}</Text>}
+      </View>}
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Text style={[styles.statLabel, { color: colors.txHeroSub }]}>내 지출</Text>
@@ -34,6 +41,11 @@ const styles = StyleSheet.create({
     badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
     name: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', marginBottom: 2 },
     date: { fontSize: 12, marginBottom: 14 },
+    membersRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginBottom: 14 },
+    memberChip: { flexDirection: 'row', alignItems: 'center', maxWidth: 100, paddingVertical: 4, paddingLeft: 4, paddingRight: 8, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.16)' },
+    memberAvatar: { width: 22, height: 22, borderRadius: 11, textAlign: 'center', textAlignVertical: 'center', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.22)', color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
+    memberName: { marginLeft: 5, color: '#FFFFFF', fontSize: 11, flexShrink: 1 },
+    moreMembers: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
     statsRow: { flexDirection: 'row', alignItems: 'center' },
     statItem: { alignItems: 'center', paddingHorizontal: 20 },
     statLabel: { fontSize: 10, marginBottom: 3 },

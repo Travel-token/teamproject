@@ -2,12 +2,10 @@ package com.example.back.auth;
 
 import java.io.IOException;
 import java.util.Collections;
-
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,42 +15,46 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
-
         private final JwtProvider jwtProvider;
-        private final com.example.back.mapper.UserMapper userMapper;
+        private final SessionService sessions;
 
         @Override
-        protected void doFilterInternal(
-                        HttpServletRequest request,
-                        HttpServletResponse response,
-                        FilterChain filterChain) throws ServletException, IOException {
-
-                String token = resolveToken(request);
-
-                if (token != null && jwtProvider.validateToken(token)) {
-
-                        Long userId = jwtProvider.getUserId(token);
-                        var user = userMapper.findById(userId);
-                        if (user == null || user.getStatus() != com.example.back.vo.enums.UserStatus.ACTIVE) {
-                            response.sendError(401, "사용할 수 없는 계정입니다."); return;
-                        }
-
-                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                        userId,
-                                        null,
-                                        Collections.emptyList());
-
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
-
-                filterChain.doFilter(request, response);
+        protected boolean shouldNotFilter(HttpServletRequest request) {
+                return request.getServletPath().startsWith("/api/auth/") || "OPTIONS".equals(request.getMethod());
         }
 
-        private String resolveToken(HttpServletRequest request) {
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+                        throws ServletException, IOException {
                 String bearer = request.getHeader("Authorization");
                 if (bearer != null && bearer.startsWith("Bearer ")) {
-                        return bearer.substring(7);
+                        Long uid;
+                        String sid;
+                        try {
+                                var claims = jwtProvider.getClaims(bearer.substring(7));
+                                uid = Long.valueOf(claims.getSubject());
+                                sid = claims.get("sid", String.class);
+                        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
+                                unauthorized(response);
+                                return;
+                        }
+                        // DB failures are server errors, not invalid credentials; clients must retain
+                        // refresh tokens.
+                        if (!sessions.active(sid, uid)) {
+                                unauthorized(response);
+                                return;
+                        }
+                        var authentication = new UsernamePasswordAuthenticationToken(uid, null,
+                                        Collections.emptyList());
+                        authentication.setDetails(sid);
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
-                return null;
+                chain.doFilter(request, response);
+        }
+
+        static void unauthorized(HttpServletResponse response) throws IOException {
+                response.setStatus(401);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"message\":\"다시 로그인해 주세요.\"}");
         }
 }

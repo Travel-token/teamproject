@@ -70,7 +70,7 @@ export interface AdoptRecommendationResponse {
     status: 'adopted';
     feedPostId: string;
 }
-export async function adoptRecommendation(recommendationId: string, caption?: string, placeId?: number) {
-    const res = await api.post<AdoptRecommendationResponse>(`/api/recommendations/${recommendationId}/adopt`, { caption, placeId });
+export async function adoptRecommendation(recommendationId: string, caption?: string, placeId?: number, externalApiId?: string | null) {
+    const res = await api.post<AdoptRecommendationResponse>(`/api/recommendations/${recommendationId}/adopt`, { caption, placeId, externalApiId });
     return res.data;
 }

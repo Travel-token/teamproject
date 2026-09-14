@@ -2,7 +2,9 @@ services:
   receipt-ocr:
     build: .
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
+    environment:
+      OCR_API_KEY: ${OCR_API_KEY:?OCR_API_KEY is required}
     volumes:
       # OCR 모델 캐시를 컨테이너 밖에 저장 -> 재시작할 때마다 다시 다운로드하지 않음
       - paddle-cache:/app/.paddlex

@@ -57,6 +57,7 @@ export async function fetchFeeds(params?: {
     sort?: FeedSort;
     lat?: number;
     lng?: number;
+    region?: string;
 }): Promise<FeedPost[]> {
     const res = await api.get<FeedPost[]>('/feeds', { params });
     return res.data;

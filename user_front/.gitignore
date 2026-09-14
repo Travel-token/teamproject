@@ -4,12 +4,17 @@ node_modules/
 # Expo
 .expo/
 .expo-shared/
+.expo-export-check/
 dist/
 web-build/
 
 # 환경변수
 .env
 .env.local
+ops/.env.server
+ops/.env.build
+ops/logs/
+ops/pids.json
 
 # 로그
 npm-debug.*
@@ -28,3 +33,13 @@ Thumbs.db
 *.key
 *.mobileprovision
 *.orig.*
+google-services.json
+*service-account*.json
+.cache/
+android/
+credentials.json
+credentials/
+deploy/.env.production
+deploy/backups/
+deploy/mysql-init/*.sql
+!deploy/mysql-init/README.md

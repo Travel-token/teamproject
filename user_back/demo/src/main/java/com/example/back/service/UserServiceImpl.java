@@ -35,9 +35,14 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserServiceImpl implements UserService {
+    @org.springframework.beans.factory.annotation.Value("${integrations.push.enabled:false}")
+    private boolean pushEnabled;
+    @org.springframework.beans.factory.annotation.Value("${integrations.payment-capture.enabled:false}")
+    private boolean captureEnabled;
 
-    // db 연결 mapper 들
+    // db 연결 mapper
     private final UserMapper userMapper;
+    private final PlaceService placeService;
     private final org.springframework.jdbc.core.JdbcTemplate db;
     private final FeedInMyPageMapper feedPostMapper;
     private final FeedPostPhotoMapper feedPostPhotoMapper;
@@ -46,7 +51,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserSettingsMapper userSettingsMapper;
 
-    // 로그 관련 서비스
+    // 로그 관련
     private final BehaviorLogService behaviorLogService;
 
     // 로그인
@@ -92,7 +97,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void updateName(Long userId, String name) {
-        if(name==null || name.isBlank() || name.length()>50) throw new IllegalArgumentException("이름은 1~50자로 입력해 주세요.");
+        if (name == null || name.isBlank() || name.length() > 50)
+            throw new IllegalArgumentException("이름은 1~50자로 입력해 주세요.");
         userMapper.updateName(userId, name.trim());
     }
 
@@ -107,7 +113,6 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void updateSetting(Long userId, NotificationUpdateRequest request) {
-        db.update("INSERT IGNORE INTO user_settings(user_id) VALUES(?)",userId);
         if (request.getDarkMode() != null) {
             userMapper.updateDarkMode(userId, request.getDarkMode());
         }
@@ -123,7 +128,9 @@ public class UserServiceImpl implements UserService {
         if (request.getNotifMarketing() != null) {
             userSettingsMapper.updateNotifMarketing(userId, request.getNotifMarketing());
         }
-        if(Boolean.TRUE.equals(request.getPaySync()))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,"결제내역 수집 서비스 설정 후 사용할 수 있습니다.");
+        if (Boolean.TRUE.equals(request.getPaySync()) && !captureEnabled)
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "결제내역 수집 서비스 설정 후 사용할 수 있습니다.");
         if (request.getPaySync() != null) {
             userSettingsMapper.updatePaySync(userId, request.getPaySync());
         }
@@ -140,8 +147,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public FeedDetailResponse createMyFeed(Long userId, FeedCreateRequest request) {
-        if(request.getCaption()==null || request.getCaption().isBlank() || request.getCaption().length()>2000) throw new IllegalArgumentException("피드 내용은 1~2000자로 입력해 주세요.");
-        if(request.getPlaceId()==null || db.queryForObject("SELECT COUNT(*) FROM places WHERE id=?",Integer.class,request.getPlaceId())==0) throw new IllegalArgumentException("장소를 선택해 주세요.");
+        if (request.getCaption() == null || request.getCaption().isBlank() || request.getCaption().length() > 2000)
+            throw new IllegalArgumentException("피드 내용은 1~2000자로 입력해 주세요.");
+        Long resolvedPlaceId = resolveFeedPlace(request);
+        request.setPlaceId(resolvedPlaceId);
         FeedPostVo post = FeedPostVo.builder()
                 .placeId(request.getPlaceId())
                 .authorId(userId)
@@ -170,7 +179,8 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("본인의 피드만 수정할 수 있습니다.");
         }
 
-        if(request.getCaption()==null || request.getCaption().isBlank() || request.getCaption().length()>2000)throw new IllegalArgumentException("피드 내용은 1~2000자로 입력해 주세요.");
+        if (request.getCaption() == null || request.getCaption().isBlank() || request.getCaption().length() > 2000)
+            throw new IllegalArgumentException("피드 내용은 1~2000자로 입력해 주세요.");
         existing.setCaption(request.getCaption());
         int updated = feedPostMapper.updateCaption(existing);
         if (updated == 0) {
@@ -208,19 +218,29 @@ public class UserServiceImpl implements UserService {
                 .map(CategoryExpenseStat::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        var totals=new java.util.LinkedHashMap<String,BigDecimal>();
-        db.query("SELECT t.currency,SUM(e.amount) FROM expenses e JOIN trips t ON t.id=e.trip_id JOIN trip_members m ON m.id=e.payer_member_id WHERE m.user_id=? GROUP BY t.currency",(org.springframework.jdbc.core.RowCallbackHandler)r->totals.put(r.getString(1),r.getBigDecimal(2)),userId);
+        var totals = new java.util.LinkedHashMap<String, BigDecimal>();
+        db.query(
+                "SELECT t.currency,SUM(e.amount) FROM expenses e JOIN trips t ON t.id=e.trip_id JOIN trip_members m ON m.id=e.payer_member_id WHERE m.user_id=? GROUP BY t.currency",
+                (org.springframework.jdbc.core.RowCallbackHandler) r -> totals.put(r.getString(1), r.getBigDecimal(2)),
+                userId);
         return ExpenseStatsResponse.builder().totalsByCurrency(totals)
                 .totalAmount(total)
-                .placeCount(db.queryForObject("SELECT COUNT(*) FROM trip_place_logs l WHERE EXISTS(SELECT 1 FROM trip_members m WHERE m.trip_id=l.trip_id AND m.user_id=?)",Integer.class,userId))
+                .placeCount(db.queryForObject(
+                        "SELECT COUNT(*) FROM trip_place_logs l WHERE EXISTS(SELECT 1 FROM trip_members m WHERE m.trip_id=l.trip_id AND m.user_id=?)",
+                        Integer.class, userId))
                 .categoryStats(stats)
                 .build();
     }
 
     @Override
     public List<TripHistoryResponse> fetchHistoryTrips(Long userId) {
-        var result=tripMapper.selectHistoryByUserId(userId);
-        for(var t:result){t.setCurrency(db.queryForObject("SELECT currency FROM trips WHERE id=?",String.class,t.getTripId()));t.setPhotoUrls(db.queryForList("SELECT CONCAT('/api/trips/',trip_id,'/photos/',id,'/content') FROM trip_photos WHERE trip_id=? ORDER BY id DESC LIMIT 4",String.class,t.getTripId()));}
+        var result = tripMapper.selectHistoryByUserId(userId);
+        for (var t : result) {
+            t.setCurrency(db.queryForObject("SELECT currency FROM trips WHERE id=?", String.class, t.getTripId()));
+            t.setPhotoUrls(db.queryForList(
+                    "SELECT CONCAT('/api/trips/',trip_id,'/photos/',id,'/content') FROM trip_photos WHERE trip_id=? ORDER BY id DESC LIMIT 4",
+                    String.class, t.getTripId()));
+        }
         return result;
     }
 
@@ -233,7 +253,34 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void withdraw(Long userId) {
+        if (pushEnabled) {
+            db.update("DELETE FROM push_outbox WHERE user_id=?", userId);
+            db.update("DELETE FROM push_devices WHERE user_id=?", userId);
+        }
+        if (captureEnabled)
+            db.update("DELETE FROM payment_candidates WHERE user_id=?", userId);
+        db.update("UPDATE auth_sessions SET revoked_at=COALESCE(revoked_at,NOW()) WHERE user_id=?", userId);
+        db.update("DELETE FROM trip_invitations WHERE invitee_id=? OR inviter_id=?", userId, userId);
+        db.update("DELETE FROM notification_events WHERE user_id=?", userId);
         userMapper.withdraw(userId);
+    }
+
+
+    private Long resolveFeedPlace(FeedCreateRequest request) {
+        if (request.getPlaceId() != null) {
+            if (db.queryForObject("SELECT COUNT(*) FROM places WHERE id=?", Integer.class, request.getPlaceId()) != 1)
+                throw new IllegalArgumentException("장소를 찾을 수 없습니다.");
+            return request.getPlaceId();
+        }
+        String externalId=request.getExternalApiId();
+        if (externalId == null || !externalId.matches("tour:[0-9]+") || request.getPlaceName()==null || request.getPlaceName().isBlank())
+            throw new IllegalArgumentException("관광공사 검색 결과에서 장소를 선택해 주세요.");
+        // The search response already came from the Tourism API. Persist that selected
+        // public-place record directly instead of making a second fragile detail request.
+        return placeService.resolveTourPlace(externalId, request.getPlaceName(), request.getAddress(),
+                request.getCategory(),
+                request.getLatitude()==null?null:java.math.BigDecimal.valueOf(request.getLatitude()),
+                request.getLongitude()==null?null:java.math.BigDecimal.valueOf(request.getLongitude()));
     }
 
     private void savePhotos(Long feedPostId, List<String> photoUrls) {
@@ -242,10 +289,18 @@ public class UserServiceImpl implements UserService {
         }
         List<FeedPostPhotoVo> photos = new ArrayList<>();
         int order = 0;
-        if(photoUrls.size()>10)throw new IllegalArgumentException("사진은 최대 10장입니다.");
+        if (photoUrls.size() > 10)
+            throw new IllegalArgumentException("사진은 최대 10장입니다.");
         for (String url : photoUrls) {
-            if(url==null || !(url.startsWith("https://") || url.startsWith("http://") || url.startsWith("/api/feed-photos/")))throw new IllegalArgumentException("사진 주소가 올바르지 않습니다.");
-            if(url.startsWith("/api/feed-photos/") && !url.startsWith("/api/feed-photos/"+com.example.back.util.SecurityUtil.getCurrentUserId()+"_") && db.queryForObject("SELECT COUNT(*) FROM feed_post_photos WHERE photo_url=?",Integer.class,url)==0)throw new IllegalArgumentException("본인이 업로드한 사진을 선택해 주세요.");
+            if (url == null || !(url.startsWith("https://") || url.startsWith("http://")
+                    || url.startsWith("/api/feed-photos/")))
+                throw new IllegalArgumentException("사진 주소가 올바르지 않습니다.");
+            if (url.startsWith("/api/feed-photos/")
+                    && !url.startsWith(
+                            "/api/feed-photos/" + com.example.back.util.SecurityUtil.getCurrentUserId() + "_")
+                    && db.queryForObject("SELECT COUNT(*) FROM feed_post_photos WHERE photo_url=?", Integer.class,
+                            url) == 0)
+                throw new IllegalArgumentException("본인이 업로드한 사진을 선택해 주세요.");
             photos.add(FeedPostPhotoVo.builder()
                     .feedPostId(feedPostId)
                     .photoUrl(url)

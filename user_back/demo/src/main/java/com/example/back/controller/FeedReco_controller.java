@@ -39,9 +39,9 @@ public class FeedReco_controller {
     private static final Long DEFAULT_USER_ID = 1L;
 
     private final FeedReco_service recoService;
-    public record AdoptRequest(String caption,Long placeId){}
+    public record AdoptRequest(String caption,Long placeId,String externalApiId){}
     @PostMapping("/{recoId}/adopt")
-    public Map<String,Object> adopt(@PathVariable Long recoId,@RequestBody AdoptRequest request){return recoService.adopt(recoId,request.caption(),request.placeId());}
+    public Map<String,Object> adopt(@PathVariable Long recoId,@RequestBody AdoptRequest request){return recoService.adopt(recoId,request.caption(),request.placeId(),request.externalApiId());}
 
     public FeedReco_controller(FeedReco_service recoService) {
         this.recoService = recoService;

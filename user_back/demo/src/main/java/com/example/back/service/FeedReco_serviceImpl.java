@@ -30,6 +30,7 @@ public class FeedReco_serviceImpl implements FeedReco_service {
     @org.springframework.beans.factory.annotation.Autowired private TripAccess access;
     @org.springframework.beans.factory.annotation.Autowired private org.springframework.jdbc.core.JdbcTemplate db;
     @org.springframework.beans.factory.annotation.Autowired private UserService users;
+    @org.springframework.beans.factory.annotation.Autowired private PlaceService placeService;
 
     public FeedReco_serviceImpl(FeedReco_repository recoRepository,
                                 Trip_repository tripRepository,
@@ -119,12 +120,13 @@ public class FeedReco_serviceImpl implements FeedReco_service {
         return recoRepository.deleteReco(recoId) > 0;
     }
 
-    public java.util.Map<String,Object> adopt(Long id,String caption,Long selectedPlaceId){
+    public java.util.Map<String,Object> adopt(Long id,String caption,Long selectedPlaceId,String externalApiId){
         db.queryForObject("SELECT id FROM feed_recommendations WHERE id=? FOR UPDATE",Long.class,id);
         var dto=getOne(id);
         if(dto.getAdoptedFeedPostId()!=null)return java.util.Map.of("recommendationId",id,"status","adopted","feedPostId",dto.getAdoptedFeedPostId());
         if(!"pending".equals(dto.getStatus()))throw new IllegalArgumentException("처리 가능한 추천이 아닙니다.");
         Long placeId=selectedPlaceId==null?dto.getPlaceId():selectedPlaceId;
+        if(placeId==null && externalApiId!=null)placeId=placeService.resolveTourPlace(externalApiId);
         if(placeId==null)throw new IllegalArgumentException("동선에 등록된 장소가 없습니다. 피드 작성에서 장소를 선택해 주세요.");
         var request=new com.example.back.dto.FeedCreateRequest();request.setPlaceId(placeId);request.setCaption(caption==null?dto.getSuggestedCaption():caption);
         // Trip images remain private; explicit feed uploads may be added by the user.

@@ -178,8 +178,14 @@ public class Trip_serviceImpl implements Trip_service {
     @Override
     public boolean deleteTrip(Long tripId) {
         access.owner(tripId);access.lock(tripId);
+        // MySQL은 같은 삭제 연쇄에서 trip_members를 먼저 지우려 할 수 있다.
+        // 멤버를 NO ACTION으로 참조하는 정산/송금 행을 명시적으로 먼저 정리한다.
+        db.update("DELETE sr FROM settlement_routes sr JOIN settlements st ON st.id=sr.settlement_id WHERE st.trip_id=?",tripId);
+        db.update("DELETE sp FROM settlement_participants sp JOIN settlements st ON st.id=sp.settlement_id WHERE st.trip_id=?",tripId);
+        db.update("DELETE FROM settlements WHERE trip_id=?",tripId);
         db.update("DELETE s FROM expense_splits s JOIN expenses e ON e.id=s.expense_id WHERE e.trip_id=?",tripId);
-        // 멤버/동선/지출은 DB의 ON DELETE CASCADE가 연쇄 정리
+        db.update("DELETE FROM transfers WHERE trip_id=?",tripId);
+        db.update("DELETE FROM expenses WHERE trip_id=?",tripId);
         return tripRepository.deleteTrip(tripId) > 0;
     }
 

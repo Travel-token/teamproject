@@ -17,6 +17,9 @@ export interface PlaceLogPayload {
     visitedAt?: string;         // "yyyy-MM-dd HH:mm", 생략하면 서버가 현재 시각 사용
     placeId?: number;           // 관광공사 등록 장소를 선택한 경우만
     detectedByGps?: boolean;    // GPS 자동 감지 여부, 기본 false
+    address?: string;           // 사용자가 입력한 목적지 주소
+    latitude?: number;          // Android 주소 검색 결과
+    longitude?: number;
 }
 
 // PlaceLog_ResponseDto와 동일한 모양

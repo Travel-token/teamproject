@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 
 @RestController
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "auth.dev-login.enabled", havingValue = "true")
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class DevLoginController {

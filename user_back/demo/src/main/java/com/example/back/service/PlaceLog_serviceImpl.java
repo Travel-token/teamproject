@@ -25,10 +25,12 @@ public class PlaceLog_serviceImpl implements PlaceLog_service {
 
     private final PlaceLog_repository placeLogRepository;
     private final Trip_repository tripRepository;
+    private final PlaceService placeService;
 
-    public PlaceLog_serviceImpl(PlaceLog_repository placeLogRepository, Trip_repository tripRepository) {
+    public PlaceLog_serviceImpl(PlaceLog_repository placeLogRepository, Trip_repository tripRepository, PlaceService placeService) {
         this.placeLogRepository = placeLogRepository;
         this.tripRepository = tripRepository;
+        this.placeService = placeService;
     }
 
     @Override
@@ -55,7 +57,16 @@ public class PlaceLog_serviceImpl implements PlaceLog_service {
 
         PlaceLog_vo log = new PlaceLog_vo();
         log.setTrip_id(tripId);
-        log.setPlace_id(request.getPlaceId()); // 자유 입력이면 null
+        Long resolvedPlaceId;
+        if (request.getExternalApiId() != null && !request.getExternalApiId().isBlank()) {
+            resolvedPlaceId = placeService.resolveTourPlace(request.getExternalApiId());
+        } else if (request.getAddress() != null && !request.getAddress().isBlank()) {
+            resolvedPlaceId = placeService.resolveRoutePlace(request.getName(), request.getAddress(),
+                    request.getLatitude(), request.getLongitude());
+        } else {
+            resolvedPlaceId = request.getPlaceId();
+        }
+        log.setPlace_id(resolvedPlaceId);
         log.setName(request.getName().trim());
         log.setMemo(request.getMemo());
         log.setLinked_expense_id(null); // 지출 연동(권소희)은 이후 단계
@@ -82,8 +93,8 @@ public class PlaceLog_serviceImpl implements PlaceLog_service {
     }
 
     @Override
-    public boolean deleteLog(Long logId) {
-        return placeLogRepository.deleteLog(logId) > 0;
+    public boolean deleteLog(Long tripId, Long logId) {
+        return placeLogRepository.deleteLog(tripId, logId) > 0;
     }
 
     @Override
@@ -133,3 +144,4 @@ public class PlaceLog_serviceImpl implements PlaceLog_service {
         return PlaceLog_ResponseDto.from(log);
     }
 }
+

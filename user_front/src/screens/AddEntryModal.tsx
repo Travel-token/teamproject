@@ -1,8 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
-import { parseReceipt } from '../api/ocr';
 import { FontAwesome6 } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +17,7 @@ import { CancelButton, FormInput, FormRow, MemberChip, SegmentChip, SubmitButton
 import { useTheme } from '../theme/ThemeContext';
 import { useToast } from '../components/Toast';
 import { apiError } from '../utils/apiError';
+import { normalizeExpenseDateTime, nowExpenseDateTime } from '../utils/expenseDateTime';
 import { Member } from '../types';
 type SplitMode = 'even' | 'manual' | 'percent';
 // ─────────────────────────────────────────────
@@ -136,21 +135,33 @@ function SpendTab({ members, initial, tripId, currency = "KRW", onSubmit, onClos
 }) {
   const { colors } = useTheme();
 
-  const [name, setName] = useState('');
-  const [emoji, setEmoji] = useState(EMOJI_OPTIONS[0]);
+  const [name, setName] = useState(initial?.name ?? '');
+  const [emoji, setEmoji] = useState(initial?.emoji ?? EMOJI_OPTIONS[0]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [payer, setPayer] = useState(members[0]?.name ?? '나');
-  const [participants, setParticipants] = useState<string[]>(members.map((m) => m.name));
-  const [splitMode, setSplitMode] = useState<SplitMode>('even');
-  const [manualAmounts, setManualAmounts] = useState<Record<string, string>>({});
-  const [percentAmounts, setPercentAmounts] = useState<Record<string, string>>({});
-  const [dateLabel, setDateLabel] = useState(todayLabel());
-  const [memo, setMemo] = useState('');
+  const [amount, setAmount] = useState(initial?.amount ?? '');
+  const [payer, setPayer] = useState(initial?.payerName ?? members[0]?.id ?? '');
+  const [participants, setParticipants] = useState<string[]>(initial?.participants ?? members.map((m) => m.id));
+  const [splitMode, setSplitMode] = useState<SplitMode>(initial?.splitMode ?? 'even');
+  const [manualAmounts, setManualAmounts] = useState<Record<string, string>>(initial?.manualAmounts ?? {});
+  const [percentAmounts, setPercentAmounts] = useState<Record<string, string>>(initial?.percentAmounts ?? {});
+  const [dateLabel, setDateLabel] = useState(initial?.dateLabel ?? nowExpenseDateTime());
+  const [memo, setMemo] = useState(initial?.memo ?? '');
+  const [categoryCode, setCategoryCode] = useState(initial?.categoryCode ?? 'meal');
 
   
   // ───────── OCR ─────────
   const [ocrLoading, setOcrLoading] = useState(false);
+  const ocrRequest = useRef<AbortController | null>(null);
+  const [ocrSeconds, setOcrSeconds] = useState(0);
+  useEffect(() => () => { ocrRequest.current?.abort(); }, []);
+  useEffect(() => {
+    if (!ocrLoading) return;
+    setOcrSeconds(0);
+    const started = Date.now();
+    const timer = setInterval(() => setOcrSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [ocrLoading]);
+  const cancelOcr = () => { ocrRequest.current?.abort(); setOcrLoading(false); };
 
   // OCR 카테고리 코드 -> 앱 이모지 매핑
   const CATEGORY_EMOJI: Record<string, string> = {
@@ -159,14 +170,6 @@ function SpendTab({ members, initial, tripId, currency = "KRW", onSubmit, onClos
     shop: '🛒',
     trans: '🚕',
     ticket: '🎫',
-  };
-
-  // "2026-04-06 15:15:00" -> "04월 06일 15:15"
-  const formatSpentAt = (raw: string): string => {
-    const m = raw.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
-    if (!m) return todayLabel();
-    const [, , mm, dd, hh, min] = m;
-    return `${mm}월 ${dd}일 ${hh}:${min}`;
   };
 
   const handleReceiptScan = async () => {
@@ -182,34 +185,45 @@ function SpendTab({ members, initial, tripId, currency = "KRW", onSubmit, onClos
     });
     if (picked.canceled) return;
 
+    const controller = new AbortController();
+    ocrRequest.current = controller;
     setOcrLoading(true);
     try {
-      const result = await extractReceipt(picked.assets[0].uri);
+      if (!tripId) throw new Error('여행을 선택한 후 영수증을 인식해 주세요.');
+      const result = await extractReceipt(tripId, picked.assets[0], controller.signal);
+      if (controller.signal.aborted) return;
 
       // 인식된 값만 채우고, 못 읽은 필드는 기존 값 유지
       if (result.name) setName(result.name);
       if (result.amount != null) setAmount(String(result.amount));
-      if (result.spentAt) setDateLabel(formatSpentAt(result.spentAt));
+      let receiptDate: string | null = null;
+      if (result.spentAt) {
+        try { receiptDate = normalizeExpenseDateTime(result.spentAt); }
+        catch { /* Keep the existing date when OCR returns an invalid value. */ }
+      }
+      if (receiptDate) setDateLabel(receiptDate);
       if (result.categoryCode && CATEGORY_EMOJI[result.categoryCode]) {
         setEmoji(CATEGORY_EMOJI[result.categoryCode]);
+        setCategoryCode(result.categoryCode);
       }
 
       const missing: string[] = [];
       if (!result.name) missing.push('상호명');
       if (result.amount == null) missing.push('금액');
-      if (!result.spentAt) missing.push('날짜');
+      if (!receiptDate) missing.push('날짜');
 
       if (missing.length > 0) {
         Alert.alert('일부 인식 실패', `${missing.join(', ')}은(는) 직접 입력해주세요.`);
       }
     } catch (e: any) {
+      if (controller.signal.aborted) return;
       Alert.alert(
         '인식 실패',
-        'OCR 서버에 연결할 수 없습니다.\n서버가 켜져 있는지, 같은 와이파이인지 확인해주세요.'
+        apiError(e, 'OCR 서버에 연결할 수 없습니다.\n서버 주소와 실행 상태를 확인해 주세요.')
       );
       console.error('OCR error:', e?.message ?? e);
     } finally {
-      setOcrLoading(false);
+      if (ocrRequest.current === controller && !controller.signal.aborted) setOcrLoading(false);
     }
   };
 
@@ -230,19 +244,25 @@ function SpendTab({ members, initial, tripId, currency = "KRW", onSubmit, onClos
 
   const handleSubmit = () => {
     if (!amount || Number(amount) <= 0) return;
+    let spentAt: string;
+    try { spentAt = normalizeExpenseDateTime(dateLabel); }
+    catch (error) {
+      Alert.alert('날짜 확인', (error as Error).message);
+      return;
+    }
     onSubmit({
       name: name.trim() || '새 지출',
       emoji,
       amount,
       payerName: payer,
+      categoryCode,
       participants,
       splitMode,
       manualAmounts,
       percentAmounts,
-      dateLabel,
+      dateLabel: spentAt,
       memo,
     });
-    onClose();
   };
 
   return (
@@ -260,10 +280,10 @@ function SpendTab({ members, initial, tripId, currency = "KRW", onSubmit, onClos
           <>
             <ActivityIndicator size="small" color={colors.txMuted} />
             <Text style={[styles.receiptText, { color: colors.txMuted }]}>
-              영수증 인식 중...
+              영수증 인식 중… {ocrSeconds}초
             </Text>
             <Text style={[styles.receiptSub, { color: colors.txPlaceholder }]}>
-              최대 1분 정도 걸릴 수 있어요
+              사진에 따라 수 분 걸릴 수 있어요. 중단 후 직접 입력할 수 있어요.
             </Text>
           </>
         ) : (
@@ -415,7 +435,7 @@ function SpendTab({ members, initial, tripId, currency = "KRW", onSubmit, onClos
       </FormRow>
 
       <SubmitButton label="지출 등록" onPress={handleSubmit} disabled={!amount || Number(amount) <= 0 || !participantCount || !manualOk || !percentOk}/>
-      <CancelButton onPress={onClose}/>
+      <>{ocrLoading && <CancelButton label="인식 대기 중단 · 직접 입력" onPress={cancelOcr}/>}<CancelButton onPress={() => { cancelOcr(); onClose(); }}/></>
     </ScrollView>);
 }
 // ─────────────────────────────────────────────

@@ -3,19 +3,22 @@ import { formatMoney } from '../utils/format';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import { Clipboard } from 'react-native';
-import { removeToken } from '../services/tokenService';
+import { endSession } from '../services/sessionActions';
+import { integrationTick } from '../services/integrationLifecycle';
+import PaymentCapturePanel from '../components/PaymentCapturePanel';
+import { apiError } from '../utils/apiError';
 import { updateMyProfileName } from '../api/mypage';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState, useEffect, useRef } from 'react';
-import { ActivityIndicator, Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View, TextInput } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View, TextInput } from 'react-native';
+import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLocationPermissionStatus, requestLocationPermission, getNotificationPermissionStatus, requestNotificationPermission, openDeviceSettings, } from '../services/devicePermissions';
 import Avatar from '../components/Avatar';
 import BottomSheetModal from '../components/BottomSheetModal';
-import FeedFormModal, { FeedFormValue } from '../components/FeedFormModal';
 import { CancelButton, SubmitButton, FormInput, FormRow } from '../components/FormBits';
 import ToggleSwitch from '../components/ToggleSwitch';
 import { useToast } from '../components/Toast';
@@ -23,7 +26,7 @@ import { formatWon } from '../utils/format';
 import { useTheme } from '../theme/ThemeContext';
 import { HistoryTrip } from '../types';
 import { RootStackParamList, TabParamList } from '../navigation/types';
-import { fetchMyProfile, updateAccount, updateNotificationSetting, NotificationKey, fetchMyFeeds, createMyFeed, updateMyFeed, deleteMyFeed, MyFeedItem, fetchHistoryStats, HistoryStats, fetchHistoryTrips, logout, withdrawAccount, } from '../api/mypage';
+import { fetchMyProfile, updateAccount, updateNotificationSetting, NotificationKey, fetchMyFeeds, MyFeedItem, fetchHistoryStats, HistoryStats, fetchHistoryTrips, } from '../api/mypage';
 type Props = CompositeScreenProps<BottomTabScreenProps<TabParamList, 'MyPage'>, NativeStackScreenProps<RootStackParamList>>;
 type TopTab = 'history' | 'mypage';
 export default function MyPageScreen({ navigation }: Props) {
@@ -31,41 +34,51 @@ export default function MyPageScreen({ navigation }: Props) {
     const [topTab, setTopTab] = useState<TopTab>('mypage');
     const insets = useSafeAreaInsets();
     return (<View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Text style={[styles.pageTitle, { color: colors.txPrimary }]}>MY</Text>
-      </View>
+        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+            <Text style={[styles.pageTitle, { color: colors.txPrimary }]}>MY</Text>
+        </View>
 
-      <View style={styles.tabRow}>
-        <Pressable onPress={() => setTopTab('history')} style={styles.tabBtn}>
-          <Text style={{
-            fontSize: 14,
-            fontWeight: topTab === 'history' ? '700' : '500',
-            color: topTab === 'history' ? colors.txPrimary : colors.txMuted,
-        }}>
-            여행 기록
-          </Text>
-        </Pressable>
-        <Pressable onPress={() => setTopTab('mypage')} style={styles.tabBtn}>
-          <Text style={{
-            fontSize: 14,
-            fontWeight: topTab === 'mypage' ? '700' : '500',
-            color: topTab === 'mypage' ? colors.txPrimary : colors.txMuted,
-        }}>
-            마이페이지
-          </Text>
-        </Pressable>
-      </View>
+        <View style={styles.tabRow}>
+            <Pressable onPress={() => setTopTab('history')} style={styles.tabBtn}>
+                <Text style={{
+                    fontSize: 14,
+                    fontWeight: topTab === 'history' ? '700' : '500',
+                    color: topTab === 'history' ? colors.txPrimary : colors.txMuted,
+                }}>
+                    여행 기록
+                </Text>
+            </Pressable>
+            <Pressable onPress={() => setTopTab('mypage')} style={styles.tabBtn}>
+                <Text style={{
+                    fontSize: 14,
+                    fontWeight: topTab === 'mypage' ? '700' : '500',
+                    color: topTab === 'mypage' ? colors.txPrimary : colors.txMuted,
+                }}>
+                    마이페이지
+                </Text>
+            </Pressable>
+        </View>
 
-      {topTab === 'mypage' ? (<MyPagePanel onSignedOut={() => navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Login' }] })} isDark={isDark} onToggleDark={(v) => setMode(v ? 'dark' : 'light')}/>) : (<HistoryPanel onTripPress={(tripId) => navigation.navigate('RoomExpense', { tripId })}/>)}
+        {topTab === 'mypage' ? (<MyPagePanel onOpenMyFeeds={() => navigation.navigate('MyFeedList')} onSignedOut={() => undefined} isDark={isDark} onToggleDark={(v) => setMode(v ? 'dark' : 'light')} />) : (<HistoryPanel onTripPress={(tripId) => navigation.navigate('RoomExpense', { tripId })} />)}
     </View>);
 }
-function MyPagePanel({ isDark, onToggleDark, onSignedOut }: {
+function MyPagePanel({ isDark, onToggleDark, onSignedOut, onOpenMyFeeds }: {
     isDark: boolean;
     onToggleDark: (v: boolean) => void;
     onSignedOut: () => void;
+    onOpenMyFeeds: () => void;
 }) {
     const { colors } = useTheme();
     const { showToast } = useToast();
+    const legal = (Constants.expoConfig?.extra?.legal ?? {}) as { privacyPolicyUrl?: string; accountDeletionUrl?: string };
+    const openLegal = async (url: string | undefined, label: string) => {
+        if (!url) {
+            showToast(`${label} 주소가 아직 설정되지 않았어요.`);
+            return;
+        }
+        try { await Linking.openURL(url); }
+        catch { showToast(`${label} 페이지를 열지 못했어요.`); }
+    };
     const [loading, setLoading] = useState(true);
     const [profileEdit, setProfileEdit] = useState(false);
     const [nameDraft, setNameDraft] = useState('');
@@ -76,20 +89,20 @@ function MyPagePanel({ isDark, onToggleDark, onSignedOut }: {
     const [notifInvite, setNotifInvite] = useState(true);
     const [notifGps, setNotifGps] = useState(true);
     const [notifMarketing, setNotifMarketing] = useState(false);
-    const [paySync, setPaySync] = useState(false);
-    const [myFeedOpen, setMyFeedOpen] = useState(false);
+    const [pushConnecting, setPushConnecting] = useState(false);
     const [myFeeds, setMyFeeds] = useState<MyFeedItem[]>([]);
-    const [feedFormVisible, setFeedFormVisible] = useState(false);
-    const [feedFormMode, setFeedFormMode] = useState<'create' | 'edit'>('create');
-    const [editingFeedId, setEditingFeedId] = useState<string | null>(null);
     const [accountBank, setAccountBank] = useState('');
     const [accountNumber, setAccountNumber] = useState('');
     const [accountEditVisible, setAccountEditVisible] = useState(false);
-    // 최초 진입 시 프로필 + 내 피드 로드
-    useEffect(() => {
+    // 프로필과 내 피드는 서로 독립적으로 반영한다. 한 요청이 실패해도 다른
+    // 데이터까지 빈 화면으로 만들지 않으며 탭에 돌아올 때 최신 목록을 읽는다.
+    useFocusEffect(useCallback(() => {
+        let active = true;
         (async () => {
-            try {
-                const [profile, feeds] = await Promise.all([fetchMyProfile(), fetchMyFeeds()]);
+            const [profileResult, feedsResult] = await Promise.allSettled([fetchMyProfile(), fetchMyFeeds()]);
+            if (!active) return;
+            if (profileResult.status === 'fulfilled') {
+                const profile = profileResult.value;
                 setName(profile.name);
                 setHandle(profile.handle);
                 setAccountBank(profile.bank);
@@ -98,116 +111,24 @@ function MyPagePanel({ isDark, onToggleDark, onSignedOut }: {
                 setNotifInvite(profile.notifInvite);
                 setNotifGps(profile.notifGps);
                 setNotifMarketing(profile.notifMarketing);
-                setPaySync(profile.paySync);
-                setMyFeeds(feeds);
-                // 서버에 저장된 다크 모드 값으로 앱 테마를 동기화
-                onToggleDark(profile.darkMode);
+                // 현재 앱 테마는 사용자가 토글할 때만 바꾼다. 화면 진입 시 서버의
+                // 오래된 기본값으로 덮어쓰면 다크 모드가 갑자기 풀릴 수 있다.
+            } else {
+                showToast(apiError(profileResult.reason, '프로필을 불러오지 못했어요'));
             }
-            catch (e) {
-                showToast('프로필을 불러오지 못했어요');
+            if (feedsResult.status === 'fulfilled') {
+                setMyFeeds(feedsResult.value);
+            } else {
+                showToast(apiError(feedsResult.reason, '내 피드를 불러오지 못했어요'));
             }
-            finally {
-                setLoading(false);
-            }
+            setLoading(false);
         })();
-    }, []);
-    // 기기 권한이 실제로는 꺼져 있는데 서버 설정값만 켜진 상태로 남는 걸 막기 위한 최신값 참조
-    const settingsRef = useRef({ notifGps, notifSettle, notifInvite, notifMarketing });
-    useEffect(() => {
-        settingsRef.current = { notifGps, notifSettle, notifInvite, notifMarketing };
-    }, [notifGps, notifSettle, notifInvite, notifMarketing]);
-    // 사용자가 기기 설정 앱에서 위치/알림 권한을 직접 꺼버린 경우,
-    // 서버에 남아있는 on 값을 실제 기기 상태에 맞춰 off로 되돌린다.
-    useEffect(() => {
-        if (loading)
-            return;
-        const reconcilePermissions = async () => {
-            const [loc, push] = await Promise.all([
-                getLocationPermissionStatus(),
-                getNotificationPermissionStatus(),
-            ]);
-            if (loc.error)
-                console.error('[MyPage] 위치 권한 동기화 확인 실패:', loc.error);
-            if (push.error)
-                console.error('[MyPage] 알림 권한 동기화 확인 실패:', push.error);
-            const cur = settingsRef.current;
-            const syncOff = (key: NotificationKey) => updateNotificationSetting(key, false).catch((e) => console.error(`[MyPage] ${key} 서버 동기화(off) 실패:`, e?.message ?? e));
-            if (loc.status !== 'granted' && cur.notifGps) {
-                setNotifGps(false);
-                syncOff('notifGps');
-            }
-            if (push.status !== 'granted') {
-                if (cur.notifSettle) {
-                    setNotifSettle(false);
-                    syncOff('notifSettle');
-                }
-                if (cur.notifInvite) {
-                    setNotifInvite(false);
-                    syncOff('notifInvite');
-                }
-                if (cur.notifMarketing) {
-                    setNotifMarketing(false);
-                    syncOff('notifMarketing');
-                }
-            }
-        };
-        reconcilePermissions();
-        const sub = AppState.addEventListener('change', (state) => {
-            if (state === 'active')
-                reconcilePermissions();
-        });
-        return () => sub.remove();
-    }, [loading]);
+        return () => { active = false; };
+    }, []));
     const totalLikes = myFeeds.reduce((sum, f) => sum + f.likes, 0);
     const totalViews = myFeeds.reduce((sum, f) => sum + f.views, 0);
-    const openCreateFeed = () => {
-        setFeedFormMode('create');
-        setEditingFeedId(null);
-        setFeedFormVisible(true);
-    };
-    const openEditFeed = (id: string) => {
-        setFeedFormMode('edit');
-        setEditingFeedId(id);
-        setFeedFormVisible(true);
-    };
-    const editingFeed = myFeeds.find((f) => f.id === editingFeedId);
-    const submitFeed = async (value: FeedFormValue) => {
-        try {
-            if (feedFormMode === 'create') {
-                const created = await createMyFeed({ placeId: value.placeId, caption: value.caption, photoUrls: value.photoUrl ? [value.photoUrl] : [] });
-                setMyFeeds((prev) => [created, ...prev]);
-                showToast('📸 피드가 등록됐어요');
-            }
-            else if (editingFeedId) {
-                const updated = await updateMyFeed(editingFeedId, { caption: value.caption, photoUrls: value.photoUrl ? [value.photoUrl] : [] });
-                setMyFeeds((prev) => prev.map((f) => (f.id === editingFeedId ? updated : f)));
-                showToast('✏️ 피드가 수정됐어요');
-            }
-        }
-        catch (e) {
-            throw e;
-        }
-    };
-    const deleteFeed = (id: string) => {
-        Alert.alert('삭제할까요?', undefined, [
-            { text: '취소', style: 'cancel' },
-            {
-                text: '삭제',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        await deleteMyFeed(id);
-                        setMyFeeds((prev) => prev.filter((f) => f.id !== id));
-                    }
-                    catch (e) {
-                        showToast('삭제에 실패했어요');
-                    }
-                },
-            },
-        ]);
-    };
     // notifGps는 위치 권한, notifSettle/notifInvite/notifMarketing은 알림 권한과 연동된다.
-    // darkMode, paySync처럼 기기 권한이 필요 없는 설정은 그대로 서버에만 저장한다.
+    // 결제 수집은 PaymentCapturePanel에서 별도의 알림 접근 권한과 동의를 확인한다.
     const requiresLocationPermission = (key: NotificationKey) => key === 'notifGps';
     const requiresNotificationPermission = (key: NotificationKey) => key === 'notifSettle' || key === 'notifInvite' || key === 'notifMarketing';
     const goToDeviceSettingsForPermission = (kind: '위치' | '알림') => {
@@ -216,7 +137,11 @@ function MyPagePanel({ isDark, onToggleDark, onSignedOut }: {
         showToast(`${kind} 권한이 꺼져 있어요. 설정 화면으로 이동할게요.`);
         openDeviceSettings();
     };
+    const settingsSaving = useRef(new Set<NotificationKey>());
     const onChangeNotification = async (key: NotificationKey, value: boolean, setLocal: (v: boolean) => void) => {
+        if (key === 'darkMode') { setLocal(value); return; }
+        if (settingsSaving.current.has(key)) return;
+        settingsSaving.current.add(key);
         try {
             // 토글을 켤 때만 기기 권한을 확인한다. 끌 때는 서버 값만 내리면 된다
             // (OS 권한 자체를 앱이 강제로 회수할 수는 없기 때문).
@@ -264,7 +189,7 @@ function MyPagePanel({ isDark, onToggleDark, onSignedOut }: {
             // 예전엔 이 지점에서 조용히 죽어서 "눌러도 반응 없음"처럼 보였다 — 반드시 로그+토스트로 드러낸다.
             console.error(`[MyPage] ${key} 토글 처리 중 예상치 못한 오류:`, e?.message ?? e);
             showToast('설정 변경 중 오류가 발생했어요');
-        }
+        } finally { settingsSaving.current.delete(key); }
     };
     const onSaveAccount = async (bank: string, number: string) => {
         try {
@@ -286,13 +211,11 @@ function MyPagePanel({ isDark, onToggleDark, onSignedOut }: {
                 style: 'destructive',
                 onPress: async () => {
                     try {
-                        await logout();
+                        await endSession();
+                        onSignedOut();
                     }
                     catch {
-                        showToast('서버 로그아웃 요청에 실패했어요');
-                    }
-                    finally {
-                        onSignedOut();
+                        showToast('로그아웃을 완료하지 못했어요. 다시 시도해 주세요.');
                     }
                 },
             },
@@ -306,8 +229,7 @@ function MyPagePanel({ isDark, onToggleDark, onSignedOut }: {
                 style: 'destructive',
                 onPress: async () => {
                     try {
-                        await withdrawAccount();
-                        await removeToken();
+                        await endSession(true);
                         onSignedOut();
                     }
                     catch (e) {
@@ -319,11 +241,11 @@ function MyPagePanel({ isDark, onToggleDark, onSignedOut }: {
     };
     if (loading) {
         return (<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.txPrimary}/>
-      </View>);
+            <ActivityIndicator color={colors.txPrimary} />
+        </View>);
     }
     return (<>
-      <BottomSheetModal visible={profileEdit} onClose={() => setProfileEdit(false)} title="프로필 수정"><FormInput value={nameDraft} onChangeText={setNameDraft} placeholder="이름"/><SubmitButton label="저장" disabled={profileSaving || !nameDraft.trim()} onPress={async () => {
+        <BottomSheetModal visible={profileEdit} onClose={() => setProfileEdit(false)} title="프로필 수정"><FormInput value={nameDraft} onChangeText={setNameDraft} placeholder="이름" /><SubmitButton label="저장" disabled={profileSaving || !nameDraft.trim()} onPress={async () => {
             if (profileSaving)
                 return;
             setProfileSaving(true);
@@ -338,82 +260,85 @@ function MyPagePanel({ isDark, onToggleDark, onSignedOut }: {
             finally {
                 setProfileSaving(false);
             }
-        }}/><CancelButton onPress={() => setProfileEdit(false)}/></BottomSheetModal>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={styles.profileFeedRow}>
-          <View style={styles.profileCol}>
-            <View style={{ position: 'relative' }}>
-              <Avatar label={name ? name.slice(0, 1) : '나'} size={60}/>
-              <Pressable onPress={() => { setNameDraft(name); setProfileEdit(true); }} style={[styles.profileEditBtn, { backgroundColor: colors.bgHero, borderColor: colors.bgScreen }]}>
-                <FontAwesome6 name="pen" size={8} color="#FFFFFF"/>
-              </Pressable>
+        }} /><CancelButton onPress={() => setProfileEdit(false)} /></BottomSheetModal>
+        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+            <View style={styles.profileFeedRow}>
+                <View style={styles.profileCol}>
+                    <View style={{ position: 'relative' }}>
+                        <Avatar label={name ? name.slice(0, 1) : '나'} size={60} />
+                        <Pressable onPress={() => { setNameDraft(name); setProfileEdit(true); }} style={[styles.profileEditBtn, { backgroundColor: colors.bgHero, borderColor: colors.bgScreen }]}>
+                            <FontAwesome6 name="pen" size={8} color="#FFFFFF" />
+                        </Pressable>
+                    </View>
+                    <Text style={[styles.profileName, { color: colors.txPrimary }]}>{name}</Text>
+                    <Text style={[styles.profileHandle, { color: colors.txMuted }]}>{handle}</Text>
+                </View>
+
+                <Pressable onPress={onOpenMyFeeds} style={styles.myFeedCol}>
+                    <View style={styles.myFeedLabelRow}>
+                        <Text style={{ fontSize: 20 }}>📸</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.txMuted }}>내 피드</Text>
+                    </View>
+                    <View style={styles.myFeedCountRow}>
+                        <Text style={[styles.myFeedCount, { color: colors.txPrimary }]}>{myFeeds.length}</Text>
+                        <View style={{ alignItems: 'flex-start', gap: 2 }}>
+                            <Text style={{ fontSize: 10, color: colors.txMuted }}>❤️ {totalLikes}</Text>
+                            <Text style={{ fontSize: 10, color: colors.txMuted }}>👁️ {totalViews}</Text>
+                        </View>
+                    </View>
+                </Pressable>
             </View>
-            <Text style={[styles.profileName, { color: colors.txPrimary }]}>{name}</Text>
-            <Text style={[styles.profileHandle, { color: colors.txMuted }]}>{handle}</Text>
-          </View>
 
-          <Pressable onPress={() => setMyFeedOpen(true)} style={styles.myFeedCol}>
-            <View style={styles.myFeedLabelRow}>
-              <Text style={{ fontSize: 20 }}>📸</Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.txMuted }}>내 피드</Text>
+            <Pressable onPress={() => { Clipboard.setString(accountNumber); showToast('계좌번호를 복사했어요'); }} style={[styles.accountRow, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 10, color: colors.txMuted, marginBottom: 4 }}>송금 계좌번호</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.txPrimary }}>
+                        {accountBank} {accountNumber}
+                    </Text>
+                </View>
+                <Pressable onPress={() => setAccountEditVisible(true)} style={[styles.editBtn, { backgroundColor: colors.bgCard2 }]}>
+                    <FontAwesome6 name="pen" size={11} color={colors.txSecondary} />
+                </Pressable>
+            </Pressable>
+
+            <SettingGroup title="알림">
+                <SettingRow icon="bell" label="정산 알림" value={notifSettle} onChange={(v) => onChangeNotification('notifSettle', v, setNotifSettle)} />
+                <SettingRow icon="paper-plane" label="여행 초대 알림" value={notifInvite} onChange={(v) => onChangeNotification('notifInvite', v, setNotifInvite)} />
+                <SettingRow icon="location-dot" label="GPS 장소 추천" value={notifGps} onChange={(v) => onChangeNotification('notifGps', v, setNotifGps)} />
+                <SettingRow icon="bullhorn" label="마케팅 알림" value={notifMarketing} onChange={(v) => onChangeNotification('notifMarketing', v, setNotifMarketing)} />
+            </SettingGroup>
+
+            <SettingGroup title="앱 설정">
+                <SettingRowValue icon="globe" label="언어" value="한국어" noChevron />
+                <SettingRow icon="moon" label="다크 모드" value={isDark} onChange={(v) => onChangeNotification('darkMode', v, onToggleDark)} />
+                <SubmitButton label={pushConnecting ? '푸시 연결 중…' : '이 기기 푸시 알림 연결'} disabled={pushConnecting} onPress={async () => {
+                    if (pushConnecting) return;
+                    setPushConnecting(true);
+                    try { await integrationTick(true); showToast('기기 푸시가 연결됐어요.'); }
+                    catch (e) { showToast(apiError(e)); }
+                    finally { setPushConnecting(false); }
+                }} />
+                <PaymentCapturePanel />
+            </SettingGroup>
+
+            <SettingGroup title="기타">
+                <SettingRowValue icon="shield-halved" label="개인정보처리방침" onPress={() => void openLegal(legal.privacyPolicyUrl, '개인정보처리방침')} />
+                <SettingRowValue icon="user-slash" label="외부 회원탈퇴 안내" onPress={() => void openLegal(legal.accountDeletionUrl, '회원탈퇴 안내')} />
+                <SettingRowValue icon="circle-info" label="버전 정보" value="v1.0.1" noChevron />
+            </SettingGroup>
+
+            <View style={styles.dangerRow}>
+                <Pressable onPress={onLogout}>
+                    <Text style={{ fontSize: 13, color: colors.txSecondary }}>로그아웃</Text>
+                </Pressable>
+                <Text style={{ color: colors.bdCard, fontSize: 13 }}>|</Text>
+                <Pressable onPress={onWithdraw}>
+                    <Text style={{ fontSize: 13, color: colors.bgDel }}>회원 탈퇴</Text>
+                </Pressable>
             </View>
-            <View style={styles.myFeedCountRow}>
-              <Text style={[styles.myFeedCount, { color: colors.txPrimary }]}>{myFeeds.length}</Text>
-              <View style={{ alignItems: 'flex-start', gap: 2 }}>
-                <Text style={{ fontSize: 10, color: colors.txMuted }}>❤️ {totalLikes}</Text>
-                <Text style={{ fontSize: 10, color: colors.txMuted }}>👁️ {totalViews}</Text>
-              </View>
-            </View>
-          </Pressable>
-        </View>
+        </ScrollView>
 
-        <Pressable onPress={() => { Clipboard.setString(accountNumber); showToast('계좌번호를 복사했어요'); }} style={[styles.accountRow, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 10, color: colors.txMuted, marginBottom: 4 }}>송금 계좌번호</Text>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.txPrimary }}>
-              {accountBank} {accountNumber}
-            </Text>
-          </View>
-          <Pressable onPress={() => setAccountEditVisible(true)} style={[styles.editBtn, { backgroundColor: colors.bgCard2 }]}>
-            <FontAwesome6 name="pen" size={11} color={colors.txSecondary}/>
-          </Pressable>
-        </Pressable>
-
-        <SettingGroup title="알림">
-          <SettingRow icon="bell" label="정산 알림" value={notifSettle} onChange={(v) => onChangeNotification('notifSettle', v, setNotifSettle)}/>
-          <SettingRow icon="paper-plane" label="여행 초대 알림" value={notifInvite} onChange={(v) => onChangeNotification('notifInvite', v, setNotifInvite)}/>
-          <SettingRow icon="location-dot" label="GPS 장소 추천" value={notifGps} onChange={(v) => onChangeNotification('notifGps', v, setNotifGps)}/>
-          <SettingRow icon="bullhorn" label="마케팅 알림" value={notifMarketing} onChange={(v) => onChangeNotification('notifMarketing', v, setNotifMarketing)}/>
-        </SettingGroup>
-
-        <SettingGroup title="앱 설정">
-          <SettingRowValue icon="globe" label="언어" value="한국어" noChevron/>
-          <SettingRow icon="moon" label="다크 모드" value={isDark} onChange={(v) => onChangeNotification('darkMode', v, onToggleDark)}/>
-          <SettingRow icon="credit-card" label="알림·문자 결제내역 연동" value={paySync} onChange={(v) => onChangeNotification('paySync', v, setPaySync)}/>
-        </SettingGroup>
-
-        <SettingGroup title="기타">
-          <SettingRowValue icon="file-lines" label="이용약관 · 문서 등록 예정" noChevron/>
-          <SettingRowValue icon="shield-halved" label="개인정보처리방침 · 문서 등록 예정" noChevron/>
-          <SettingRowValue icon="circle-info" label="버전 정보" value="v1.0.0" noChevron/>
-        </SettingGroup>
-
-        <View style={styles.dangerRow}>
-          <Pressable onPress={onLogout}>
-            <Text style={{ fontSize: 13, color: colors.txSecondary }}>로그아웃</Text>
-          </Pressable>
-          <Text style={{ color: colors.bdCard, fontSize: 13 }}>|</Text>
-          <Pressable onPress={onWithdraw}>
-            <Text style={{ fontSize: 13, color: colors.bgDel }}>회원 탈퇴</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-
-      <MyFeedModal visible={myFeedOpen} onClose={() => setMyFeedOpen(false)} feeds={myFeeds} onCreate={openCreateFeed} onEdit={openEditFeed} onDelete={deleteFeed}/>
-
-      <FeedFormModal visible={feedFormVisible} onClose={() => setFeedFormVisible(false)} mode={feedFormMode} initialValue={editingFeed ? { placeId: editingFeed.placeId, caption: editingFeed.caption, photoUrl: editingFeed.photoUrls[0] ?? '' } : undefined} onSubmit={submitFeed}/>
-
-      <AccountEditModal visible={accountEditVisible} onClose={() => setAccountEditVisible(false)} bank={accountBank} number={accountNumber} onSave={onSaveAccount}/>
+        <AccountEditModal visible={accountEditVisible} onClose={() => setAccountEditVisible(false)} bank={accountBank} number={accountNumber} onSave={onSaveAccount} />
 
     </>);
 }
@@ -433,48 +358,14 @@ function AccountEditModal({ visible, onClose, bank, number, onSave, }: {
         }
     }, [visible, bank, number]);
     return (<BottomSheetModal visible={visible} onClose={onClose} title="계좌번호 수정">
-      <FormRow label="은행">
-        <FormInput value={bankDraft} onChangeText={setBankDraft} placeholder="예: 카카오뱅크"/>
-      </FormRow>
-      <FormRow label="계좌번호">
-        <FormInput value={numberDraft} onChangeText={setNumberDraft} placeholder="예: 3333-04-1234567" keyboardType="numbers-and-punctuation"/>
-      </FormRow>
-      <SubmitButton label="저장하기" disabled={!bankDraft.trim() || !numberDraft.trim()} onPress={() => onSave(bankDraft.trim(), numberDraft.trim())}/>
-      <CancelButton onPress={onClose}/>
-    </BottomSheetModal>);
-}
-function MyFeedModal({ visible, onClose, feeds, onCreate, onEdit, onDelete, }: {
-    visible: boolean;
-    onClose: () => void;
-    feeds: MyFeedItem[];
-    onCreate: () => void;
-    onEdit: (id: string) => void;
-    onDelete: (id: string) => void;
-}) {
-    const { colors } = useTheme();
-    return (<BottomSheetModal visible={visible} onClose={onClose} title="내 피드" maxHeightPct={88}>
-      {feeds.length === 0 ? (<Text style={{ textAlign: 'center', fontSize: 12, color: colors.txMuted, paddingVertical: 20 }}>
-          아직 등록한 피드가 없어요.
-        </Text>) : (<View style={{ gap: 8 }}>
-          {feeds.map((f) => (<View key={f.id} style={[styles.myFeedRow, { backgroundColor: colors.bgCard2 }]}>
-              <View style={[styles.myFeedThumb, { backgroundColor: colors.bgCollage[0] }]}>
-                <Text style={{ fontSize: 22 }}>{f.photoUrls}</Text>
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[styles.myFeedPlace, { color: colors.txPrimary }]} numberOfLines={1}>{f.placeId}</Text>
-                <Text style={{ fontSize: 11, color: colors.txMuted, marginTop: 2 }} numberOfLines={1}>{f.caption}</Text>
-                <Text style={{ fontSize: 10, color: colors.txMuted, marginTop: 3 }}>❤️ {f.likes} · 👁️ {f.views}</Text>
-              </View>
-              <Pressable onPress={() => onEdit(f.id)} style={[styles.myFeedIconBtn, { backgroundColor: colors.expEditBg }]}>
-                <FontAwesome6 name="pen" size={10} color={colors.expEditColor}/>
-              </Pressable>
-              <Pressable onPress={() => onDelete(f.id)} style={[styles.myFeedIconBtn, { backgroundColor: colors.bgDel, marginLeft: 6 }]}>
-                <FontAwesome6 name="trash" size={10} color="#FFFFFF"/>
-              </Pressable>
-            </View>))}
-        </View>)}
-      <SubmitButton label="피드 만들기" onPress={onCreate}/>
-      <CancelButton label="닫기" onPress={onClose}/>
+        <FormRow label="은행">
+            <FormInput value={bankDraft} onChangeText={setBankDraft} placeholder="예: 카카오뱅크" />
+        </FormRow>
+        <FormRow label="계좌번호">
+            <FormInput value={numberDraft} onChangeText={setNumberDraft} placeholder="예: 3333-04-1234567" keyboardType="numbers-and-punctuation" />
+        </FormRow>
+        <SubmitButton label="저장하기" disabled={!bankDraft.trim() || !numberDraft.trim()} onPress={() => onSave(bankDraft.trim(), numberDraft.trim())} />
+        <CancelButton onPress={onClose} />
     </BottomSheetModal>);
 }
 function SettingGroup({ title, children }: {
@@ -483,10 +374,10 @@ function SettingGroup({ title, children }: {
 }) {
     const { colors } = useTheme();
     return (<View style={{ marginBottom: 6 }}>
-      <Text style={[styles.groupLabel, { color: colors.txMuted }]}>{title}</Text>
-      <View style={[styles.groupCard, { backgroundColor: colors.bgSettings, borderColor: colors.bdCard }]}>
-        {children}
-      </View>
+        <Text style={[styles.groupLabel, { color: colors.txMuted }]}>{title}</Text>
+        <View style={[styles.groupCard, { backgroundColor: colors.bgSettings, borderColor: colors.bdCard }]}>
+            {children}
+        </View>
     </View>);
 }
 function SettingRow({ icon, label, value, onChange, }: {
@@ -497,28 +388,32 @@ function SettingRow({ icon, label, value, onChange, }: {
 }) {
     const { colors } = useTheme();
     return (<View style={styles.settingRow}>
-      <View style={[styles.sgIcon, { backgroundColor: colors.sgIconBg }]}>
-        <FontAwesome6 name={icon} size={13} color={colors.sgIconColor}/>
-      </View>
-      <Text style={[styles.settingLabel, { color: colors.txPrimary }]}>{label}</Text>
-      <ToggleSwitch value={value} onChange={onChange}/>
+        <View style={[styles.sgIcon, { backgroundColor: colors.sgIconBg }]}>
+            <FontAwesome6 name={icon} size={13} color={colors.sgIconColor} />
+        </View>
+        <Text style={[styles.settingLabel, { color: colors.txPrimary }]}>{label}</Text>
+        <ToggleSwitch value={value} onChange={onChange} />
     </View>);
 }
-function SettingRowValue({ icon, label, value, noChevron, }: {
+function SettingRowValue({ icon, label, value, noChevron, onPress, }: {
     icon: React.ComponentProps<typeof FontAwesome6>['name'];
     label: string;
     value?: string;
     noChevron?: boolean;
+    onPress?: () => void;
 }) {
     const { colors } = useTheme();
-    return (<View style={styles.settingRow}>
-      <View style={[styles.sgIcon, { backgroundColor: colors.sgIconBg }]}>
-        <FontAwesome6 name={icon} size={13} color={colors.sgIconColor}/>
-      </View>
-      <Text style={[styles.settingLabel, { color: colors.txPrimary }]}>{label}</Text>
-      {value && <Text style={{ fontSize: 12, color: colors.txMuted, marginRight: 6 }}>{value}</Text>}
-      {!noChevron && <FontAwesome6 name="chevron-right" size={11} color={colors.chevronColor}/>}
-    </View>);
+    const content = <>
+        <View style={[styles.sgIcon, { backgroundColor: colors.sgIconBg }]}>
+            <FontAwesome6 name={icon} size={13} color={colors.sgIconColor} />
+        </View>
+        <Text style={[styles.settingLabel, { color: colors.txPrimary }]}>{label}</Text>
+        {value && <Text style={{ fontSize: 12, color: colors.txMuted, marginRight: 6 }}>{value}</Text>}
+        {!noChevron && <FontAwesome6 name="chevron-right" size={11} color={colors.chevronColor} />}
+    </>;
+    return onPress
+        ? <Pressable accessibilityRole="link" onPress={onPress} style={styles.settingRow}>{content}</Pressable>
+        : <View style={styles.settingRow}>{content}</View>;
 }
 function HistoryPanel({ onTripPress }: {
     onTripPress: (id: string) => void;
@@ -572,51 +467,51 @@ function HistoryPanel({ onTripPress }: {
     };
     if (loading) {
         return (<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.txPrimary}/>
-      </View>);
+            <ActivityIndicator color={colors.txPrimary} />
+        </View>);
     }
     return (<ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={[styles.statCard, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
-        <StatCell value={`${stats?.tripCount ?? 0}`} label="여행 횟수"/>
-        <StatCell value={`${stats?.totalDays ?? 0}`} label="총 여행일수"/>
-        <StatCell value={`${stats?.placeCount ?? 0}`} label="방문 장소"/>
-        <StatCell value={stats?.totalsByCurrency ? Object.entries(stats.totalsByCurrency).map(([c, n]) => formatMoney(n, c)).join(" / ") : formatWon(stats?.totalExpense ?? 0)} label="총 지출액" last/>
-      </View>
+        <View style={[styles.statCard, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
+            <StatCell value={`${stats?.tripCount ?? 0}`} label="여행 횟수" />
+            <StatCell value={`${stats?.totalDays ?? 0}`} label="총 여행일수" />
+            <StatCell value={`${stats?.placeCount ?? 0}`} label="방문 장소" />
+            <StatCell value={stats?.totalsByCurrency ? Object.entries(stats.totalsByCurrency).map(([c, n]) => formatMoney(n, c)).join(" / ") : formatWon(stats?.totalExpense ?? 0)} label="총 지출액" last />
+        </View>
 
-      <View style={styles.histHd}>
-        {searchOpen ? (<View style={[styles.histSearchBox, { backgroundColor: colors.bgInput, borderColor: colors.bdInput }]}>
-            <FontAwesome6 name="magnifying-glass" size={12} color={colors.txMuted}/>
-            <TextInput value={searchQuery} onChangeText={setSearchQuery} placeholder="여행 기록 검색..." placeholderTextColor={colors.txPlaceholder} style={[styles.histSearchInput, { color: colors.txPrimary }]} autoFocus/>
-            <Pressable onPress={toggleSearch}>
-              <FontAwesome6 name="xmark" iconStyle="solid" size={14} color={colors.txMuted}/>
-            </Pressable>
-          </View>) : (<>
-            <Text style={[styles.groupLabelBig, { color: colors.txPrimary }]}>내 여행</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={{ fontSize: 12, color: colors.txMuted }}>{pinned.length}개</Text>
-              <Pressable onPress={toggleSearch}>
-                <FontAwesome6 name="magnifying-glass" iconStyle="solid" size={13} color={colors.txMuted}/>
-              </Pressable>
-            </View>
-          </>)}
-      </View>
+        <View style={styles.histHd}>
+            {searchOpen ? (<View style={[styles.histSearchBox, { backgroundColor: colors.bgInput, borderColor: colors.bdInput }]}>
+                <FontAwesome6 name="magnifying-glass" size={12} color={colors.txMuted} />
+                <TextInput value={searchQuery} onChangeText={setSearchQuery} placeholder="여행 기록 검색..." placeholderTextColor={colors.txPlaceholder} style={[styles.histSearchInput, { color: colors.txPrimary }]} autoFocus />
+                <Pressable onPress={toggleSearch}>
+                    <FontAwesome6 name="xmark" iconStyle="solid" size={14} color={colors.txMuted} />
+                </Pressable>
+            </View>) : (<>
+                <Text style={[styles.groupLabelBig, { color: colors.txPrimary }]}>내 여행</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={{ fontSize: 12, color: colors.txMuted }}>{pinned.length}개</Text>
+                    <Pressable onPress={toggleSearch}>
+                        <FontAwesome6 name="magnifying-glass" iconStyle="solid" size={13} color={colors.txMuted} />
+                    </Pressable>
+                </View>
+            </>)}
+        </View>
 
-      <View style={{ paddingHorizontal: 20, gap: 8 }}>
-        {pinned.map((t) => (<HistoryCard key={t.id} trip={t} onPress={() => onTripPress(t.id)}/>))}
-        {q.length > 0 && pinned.length === 0 && hidden.length === 0 && (<Text style={{ fontSize: 12, color: colors.txMuted, textAlign: 'center', paddingVertical: 20 }}>
-            '{q}'에 대한 검색 결과가 없어요
-          </Text>)}
-      </View>
+        <View style={{ paddingHorizontal: 20, gap: 8 }}>
+            {pinned.map((t) => (<HistoryCard key={t.id} trip={t} onPress={() => onTripPress(t.id)} />))}
+            {q.length > 0 && pinned.length === 0 && hidden.length === 0 && (<Text style={{ fontSize: 12, color: colors.txMuted, textAlign: 'center', paddingVertical: 20 }}>
+                '{q}'에 대한 검색 결과가 없어요
+            </Text>)}
+        </View>
 
-      <Pressable onPress={() => setShowHidden((v) => !v)} style={[styles.moreBtn, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
-        <FontAwesome6 name={showHidden ? 'chevron-up' : 'chevron-down'} size={12} color={colors.txSecondary}/>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.txSecondary, marginLeft: 8 }}>
-          {showHidden ? '숨기기' : '전체 여행 더보기'}
-        </Text>
-      </Pressable>
+        <Pressable onPress={() => setShowHidden((v) => !v)} style={[styles.moreBtn, { backgroundColor: colors.bgCard, borderColor: colors.bdCard }]}>
+            <FontAwesome6 name={showHidden ? 'chevron-up' : 'chevron-down'} size={12} color={colors.txSecondary} />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.txSecondary, marginLeft: 8 }}>
+                {showHidden ? '숨기기' : '전체 여행 더보기'}
+            </Text>
+        </Pressable>
 
-      {showHidden && (<View style={{ paddingHorizontal: 20, gap: 8, marginTop: 10 }}>
-          {hidden.map((t) => (<HistoryCard key={t.id} trip={t} faded onPress={() => onTripPress(t.id)}/>))}
+        {showHidden && (<View style={{ paddingHorizontal: 20, gap: 8, marginTop: 10 }}>
+            {hidden.map((t) => (<HistoryCard key={t.id} trip={t} faded onPress={() => onTripPress(t.id)} />))}
         </View>)}
     </ScrollView>);
 }
@@ -627,8 +522,8 @@ function StatCell({ value, label, last }: {
 }) {
     const { colors } = useTheme();
     return (<View style={[styles.statCell, !last && { borderRightWidth: 0.5, borderRightColor: colors.bdCard }]}>
-      <Text style={{ fontSize: 15, fontWeight: '800', color: colors.txPrimary }}>{value}</Text>
-      <Text style={{ fontSize: 10, color: colors.txMuted, marginTop: 2 }}>{label}</Text>
+        <Text style={{ fontSize: 15, fontWeight: '800', color: colors.txPrimary }}>{value}</Text>
+        <Text style={{ fontSize: 10, color: colors.txMuted, marginTop: 2 }}>{label}</Text>
     </View>);
 }
 function HistoryCard({ trip, onPress, faded }: {
@@ -638,30 +533,30 @@ function HistoryCard({ trip, onPress, faded }: {
 }) {
     const { colors } = useTheme();
     return (<Pressable onPress={onPress} style={[styles.histCard, { backgroundColor: colors.bgCard, borderColor: colors.bdCard, opacity: faded ? 0.7 : 1 }]}>
-      {trip.collage.length ? (<View style={styles.histCollage}>
-          {trip.collage.map((e, i) => (<View key={i} style={[styles.histCollageCell, { backgroundColor: colors.bgCollage[i % 4] }]}>
-              <ApiImage uri={e} style={{ width: "100%", height: "100%" }}/>
+        {trip.collage.length ? (<View style={styles.histCollage}>
+            {trip.collage.map((e, i) => (<View key={i} style={[styles.histCollageCell, { backgroundColor: colors.bgCollage[i % 4] }]}>
+                <ApiImage uri={e} style={{ width: "100%", height: "100%" }} />
             </View>))}
         </View>) : (<View style={[styles.histNoImg, { backgroundColor: colors.bgCard2 }]}>
-          <Text style={{ fontSize: 16 }}>📷</Text>
+            <Text style={{ fontSize: 16 }}>📷</Text>
         </View>)}
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <Text style={[styles.histName, { color: colors.txPrimary }]}>{trip.name}</Text>
-        <Text style={[styles.histDate, { color: colors.txMuted }]}>{trip.dateLabel}</Text>
-        <Text style={[styles.histAmt, { color: colors.txPrimary }]}>{formatMoney(trip.amount, trip.currency)}</Text>
-      </View>
-      <View style={[
+        <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.histName, { color: colors.txPrimary }]}>{trip.name}</Text>
+            <Text style={[styles.histDate, { color: colors.txMuted }]}>{trip.dateLabel}</Text>
+            <Text style={[styles.histAmt, { color: colors.txPrimary }]}>{formatMoney(trip.amount, trip.currency)}</Text>
+        </View>
+        <View style={[
             styles.histBadge,
             { backgroundColor: trip.badge === '진행 중' ? colors.bgBadgeLive : colors.bgBadgeDone },
         ]}>
-        <Text style={{
-            fontSize: 10,
-            fontWeight: '700',
-            color: trip.badge === '진행 중' ? '#FFFFFF' : colors.txBadgeDone,
-        }}>
-          {trip.badge}
-        </Text>
-      </View>
+            <Text style={{
+                fontSize: 10,
+                fontWeight: '700',
+                color: trip.badge === '진행 중' ? '#FFFFFF' : colors.txBadgeDone,
+            }}>
+                {trip.badge}
+            </Text>
+        </View>
     </Pressable>);
 }
 const styles = StyleSheet.create({

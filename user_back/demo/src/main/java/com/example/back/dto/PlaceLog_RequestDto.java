@@ -31,6 +31,12 @@ public class PlaceLog_RequestDto {
 
     /** 관광공사 등록 장소를 선택했을 때만 그 장소의 id (자유 입력이면 null) */
     private Long placeId;
+    private String externalApiId;
+
+    /** 사용자가 직접 입력하고 Android에서 좌표로 변환한 목적지 주소 */
+    private String address;
+    private Double latitude;
+    private Double longitude;
 
     /**
      * GPS 자동 감지로 추가된 기록인지 (선택, 기본 false).
@@ -38,3 +44,4 @@ public class PlaceLog_RequestDto {
      */
     private Boolean detectedByGps;
 }
+

@@ -2,13 +2,14 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-export default function RoomMenuDropdown({ visible, onClose, onEditTrip, onEndTrip, onDeleteTrip, onInvite, }: {
+export default function RoomMenuDropdown({ visible, onClose, onEditTrip, onEndTrip, onDeleteTrip, onInvite, onRecommend, }: {
     visible: boolean;
     onClose: () => void;
     onEditTrip: () => void;
     onEndTrip: () => void;
     onDeleteTrip: () => void;
     onInvite: () => void;
+    onRecommend: () => void;
 }) {
     const { colors } = useTheme();
     return (<Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -30,6 +31,10 @@ export default function RoomMenuDropdown({ visible, onClose, onEditTrip, onEndTr
             <Text style={[styles.itemText, { color: colors.txPrimary }]}>여행 끝내기</Text>
           </Pressable>
           <Pressable style={styles.item} onPress={() => { onClose(); onInvite(); }}><Text style={[styles.itemText, { color: colors.txPrimary }]}>초대 코드 공유</Text></Pressable>
+          <Pressable style={styles.item} onPress={() => { onClose(); onRecommend(); }}>
+            <FontAwesome6 name="wand-magic-sparkles" size={13} color={colors.txPrimary} style={{ width: 16 }}/>
+            <Text style={[styles.itemText, { color: colors.txPrimary }]}>AI 피드 추천 보기</Text>
+          </Pressable>
           <Pressable style={styles.item} onPress={() => { onClose(); onDeleteTrip(); }}><Text style={[styles.itemText, { color: colors.danger }]}>여행 삭제</Text></Pressable>
         </View>
       </Pressable>

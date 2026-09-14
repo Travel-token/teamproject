@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Image, ImageProps, Platform, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ensureAccessToken } from '../services/authSession';
 import { API_BASE_URL, apiImageUrl } from '../config/api';
 import { api } from '../api/client';
 export default function ApiImage({ uri, ...props }: Omit<ImageProps, 'source'> & {
@@ -27,7 +27,7 @@ export default function ApiImage({ uri, ...props }: Omit<ImageProps, 'source'> &
                     URL.revokeObjectURL(objectUrl);
             }
             else {
-                const token = await AsyncStorage.getItem('accessToken');
+                const token = await ensureAccessToken();
                 if (alive)
                     setSource({ uri: url, headers: token ? { Authorization: 'Bearer ' + token } : {} });
             }
@@ -38,5 +38,5 @@ export default function ApiImage({ uri, ...props }: Omit<ImageProps, 'source'> &
                 URL.revokeObjectURL(objectUrl);
         };
     }, [uri]);
-    return source ? <Image {...props} source={source}/> : <View style={props.style}/>;
+    return source ? <Image {...props} source={source} /> : <View style={props.style} />;
 }

@@ -8,8 +8,10 @@ import * as Location from 'expo-location';
  */
 export async function fetchCurrentRegionLabel(): Promise<string | null> {
     try {
+        const permission = await Location.getForegroundPermissionsAsync();
+        if (permission.status !== 'granted') return null;
         const position = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.Low,
         });
 
         const results = await Location.reverseGeocodeAsync({
@@ -19,9 +21,13 @@ export async function fetchCurrentRegionLabel(): Promise<string | null> {
         const place = results[0];
         if (!place) return null;
 
-        // 한국 주소 기준: Android Geocoder가 subAdminArea(시/군/구)를 subregion으로 내려준다.
-        // 그게 없는 드문 케이스에만 시/도 단위(city/region)로 대체한다.
-        return place.subregion || place.city || place.region || null;
+        // 추천 후보의 행정구역 형식과 같게 "시·도 + 시·군·구"까지만 만든다.
+        // 동·읍·면 및 도로명은 포함하지 않는다.
+        const first = place.region || place.city || null;
+        const city = place.city && place.city !== first ? place.city : null;
+        const district = place.district && /(?:시|군|구)$/.test(place.district) ? place.district : null;
+        const second = place.subregion || city || district;
+        return [first, second].filter((value, index, all): value is string => !!value && all.indexOf(value) === index).join(' ') || null;
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         // eslint-disable-next-line no-console

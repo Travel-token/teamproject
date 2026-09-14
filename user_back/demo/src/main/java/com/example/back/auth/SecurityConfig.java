@@ -23,6 +23,9 @@ public class SecurityConfig {
 
         private final JwtFilter jwtFilter;
 
+        @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:8081,http://localhost:8082,http://127.0.0.1:8081,http://127.0.0.1:8082}")
+        private String[] allowedOrigins;
+
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
@@ -31,9 +34,12 @@ public class SecurityConfig {
                                 .csrf(csrf -> csrf.disable())
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .exceptionHandling(errors -> errors.authenticationEntryPoint(
+                                                (request, response, error) -> JwtFilter.unauthorized(response)))
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                                 .requestMatchers("/api/auth/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                                                 .requestMatchers("/error").permitAll()
                                                 .anyRequest().authenticated())
                                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -44,7 +50,7 @@ public class SecurityConfig {
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(List.of("http://localhost:8081", "http://localhost:8082"));
+                configuration.setAllowedOrigins(List.of(allowedOrigins));
                 configuration.setAllowedMethods(List.of("*"));
                 configuration.setAllowedHeaders(List.of("*"));
                 configuration.setAllowCredentials(true);

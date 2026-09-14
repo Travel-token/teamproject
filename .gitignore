@@ -1,1 +1,11 @@
 .idea/
+user_front/.expo/
+user_front/.cache/
+user_front/android/
+user_front/node_modules/
+.venv/
+.venv-ocr/
+**/__pycache__/
+logs/
+server-data/
+uploads/

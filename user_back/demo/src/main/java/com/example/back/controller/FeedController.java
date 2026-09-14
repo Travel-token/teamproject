@@ -22,8 +22,9 @@ public class FeedController {
     public List<FeedPostVO> getFeeds(
             @RequestParam(defaultValue = "popular") String sort,
             @RequestParam(required = false) Double lat,
-            @RequestParam(required = false) Double lng) {
-        return feedService.getFeeds(sort, lat, lng);
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) String region) {
+        return feedService.getFeeds(sort, lat, lng, region);
     }
 
     @GetMapping("/feeds/{id}")

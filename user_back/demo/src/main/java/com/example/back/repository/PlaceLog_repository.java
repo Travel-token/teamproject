@@ -18,7 +18,7 @@ public interface PlaceLog_repository {
 
     List<PlaceLog_vo> findByTripId(Long trip_id); // 방문 시각 순
 
-    int deleteLog(Long id);
+    int deleteLog(@Param("tripId") Long tripId, @Param("logId") Long logId);
 
     int updateDisplayOrder(
             @Param("tripId") Long tripId,

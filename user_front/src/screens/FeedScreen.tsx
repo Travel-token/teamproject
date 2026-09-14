@@ -1,3 +1,4 @@
+import { openNotificationInbox } from '../services/notificationInbox';
 import ApiImage from '../components/ApiImage';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -5,7 +6,6 @@ import { CompositeScreenProps } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import * as Location from 'expo-location';
 import { useToast } from '../components/Toast';
 import { apiError } from '../utils/apiError';
 import { fetchFeeds, FeedPost as ApiFeedPost } from '../api/feed';
@@ -16,8 +16,9 @@ import IconCircleButton from '../components/IconCircleButton';
 import { useTheme } from '../theme/ThemeContext';
 import { FeedPost } from '../types';
 import { RootStackParamList, TabParamList } from '../navigation/types';
+import { fetchCurrentRegionLabel } from '../services/currentRegion';
 const TILE_SIZE = Dimensions.get('window').width / 3;
-type SortKey = 'popular' | 'recent' | 'distance';
+type SortKey = 'popular' | 'recent';
 type Props = CompositeScreenProps<BottomTabScreenProps<TabParamList, 'Feed'>, NativeStackScreenProps<RootStackParamList>>;
 export default function FeedScreen({ navigation }: Props) {
     const { colors } = useTheme();
@@ -26,67 +27,54 @@ export default function FeedScreen({ navigation }: Props) {
     const [sort, setSort] = useState<SortKey>('popular');
     const { showToast } = useToast();
     const [posts, setPosts] = useState<FeedPost[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState('');
+    const [reloadKey, setReloadKey] = useState(0);
     useFocusEffect(useCallback(() => {
         let alive = true;
+        setLoading(true); setLoadError('');
         (async () => {
             try {
-                let coords: {
-                    lat?: number;
-                    lng?: number;
-                } = {};
-                if (sort === 'distance') {
-                    const permission = await Location.getForegroundPermissionsAsync();
-                    if (permission.status !== 'granted') {
-                        showToast('거리순 조회에는 위치 권한이 필요해요');
-                        return;
-                    }
-                    const loc = await Location.getCurrentPositionAsync({});
-                    coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
-                }
-                const items = await fetchFeeds({ sort: sort === 'recent' ? 'latest' : sort, ...coords });
+                // 좌표는 기기에서 행정구역으로 바꾸고, 서버에는 행정구역 문자열만 보낸다.
+                const region = sort === 'popular' ? await fetchCurrentRegionLabel() : null;
+                const items = await fetchFeeds({ sort: sort === 'recent' ? 'latest' : sort, region: region || undefined });
                 if (alive)
                     setPosts(items.map(toFeedCard));
             }
             catch (e) {
-                if (alive)
-                    showToast(apiError(e, '피드를 불러오지 못했어요'));
-            }
+                if (alive) setLoadError(apiError(e, '피드를 불러오지 못했어요'));
+            } finally { if (alive) setLoading(false); }
         })();
         return () => { alive = false; };
-    }, [sort]));
+    }, [sort, reloadKey]));
     const data = useMemo(() => {
-        let list = posts.filter((p) => p.place.includes(query) || p.caption.includes(query));
-        if (sort === 'popular')
-            list = [...list].sort((a, b) => b.likes - a.likes);
-        if (sort === 'recent')
-            list = [...list].sort((a, b) => (a.date < b.date ? 1 : -1));
-        if (sort === 'distance')
-            list = [...list].sort((a, b) => a.distanceKm - b.distanceKm);
-        return list;
-    }, [posts, query, sort]);
+        // Preserve the server order: popular is personalized and distance is computed server-side.
+        return posts.filter((p) => p.place.includes(query) || p.caption.includes(query));
+    }, [posts, query]);
     return (<View style={[styles.screen, { backgroundColor: colors.bgScreen }]}>
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Text style={[styles.pageTitle, { color: colors.txPrimary }]}>피드</Text>
-        <View style={styles.topRight}>
-          <IconCircleButton icon="bell" showDot/>
-          <Pressable onPress={() => navigation.navigate('MyPage')}>
-            <Avatar label="나" size={34}/>
-          </Pressable>
+        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+            <Text style={[styles.pageTitle, { color: colors.txPrimary }]}>피드</Text>
+            <View style={styles.topRight}>
+                <IconCircleButton icon="bell" onPress={openNotificationInbox} />
+                <Pressable onPress={() => navigation.navigate('MyPage')}>
+                    <Avatar label="나" size={34} />
+                </Pressable>
+            </View>
         </View>
-      </View>
 
-      <View style={[styles.searchBar, { backgroundColor: colors.bgInput, borderColor: colors.bdInput }]}>
-        <FontAwesome6 name="magnifying-glass" size={13} color={colors.txMuted}/>
-        <TextInput value={query} onChangeText={setQuery} placeholder="장소, 여행지 검색..." placeholderTextColor={colors.txPlaceholder} style={[styles.searchInput, { color: colors.txPrimary }]}/>
-      </View>
+        <View style={[styles.searchBar, { backgroundColor: colors.bgInput, borderColor: colors.bdInput }]}>
+            <FontAwesome6 name="magnifying-glass" size={13} color={colors.txMuted} />
+            <TextInput value={query} onChangeText={setQuery} placeholder="장소, 여행지 검색..." placeholderTextColor={colors.txPlaceholder} style={[styles.searchInput, { color: colors.txPrimary }]} />
+        </View>
 
-      <View style={styles.sortBar}>
-        <SortChip icon="fire" label="인기순" active={sort === 'popular'} onPress={() => setSort('popular')}/>
-        <SortChip icon="clock" label="최신순" active={sort === 'recent'} onPress={() => setSort('recent')}/>
-        <SortChip icon="location-dot" label="거리순" active={sort === 'distance'} onPress={() => setSort('distance')}/>
-      </View>
+        <View style={styles.sortBar}>
+            <SortChip icon="fire" label="인기순" active={sort === 'popular'} onPress={() => setSort('popular')} />
+            <SortChip icon="clock" label="최신순" active={sort === 'recent'} onPress={() => setSort('recent')} />
+        </View>
 
-      <FlatList data={data} keyExtractor={(item) => item.id} numColumns={3} contentContainerStyle={{ paddingBottom: 20 }} renderItem={({ item, index }) => (<FeedGridItem post={item} index={index} onPress={() => navigation.navigate('FeedDetail', { post: item })}/>)}/>
+        <FlatList refreshing={loading} onRefresh={() => setReloadKey(k => k + 1)}
+            ListHeaderComponent={loadError ? <Pressable onPress={() => setReloadKey(k => k + 1)}><Text style={{ color: colors.danger, padding: 16 }}>{loadError} · 다시 시도</Text></Pressable> : null}
+            ListEmptyComponent={!loading && !loadError ? <Text style={{ color: colors.txMuted, padding: 16 }}>표시할 피드가 없어요.</Text> : null} data={data} keyExtractor={(item) => item.id} numColumns={3} contentContainerStyle={{ paddingBottom: 20 }} renderItem={({ item, index }) => (<FeedGridItem post={item} index={index} onPress={() => navigation.navigate('FeedDetail', { post: item })} />)} />
     </View>);
 }
 function SortChip({ icon, label, active, onPress, }: {
@@ -97,13 +85,13 @@ function SortChip({ icon, label, active, onPress, }: {
 }) {
     const { colors } = useTheme();
     return (<Pressable onPress={onPress} style={[
-            styles.chip,
-            { backgroundColor: active ? colors.bgChipActive : colors.bgCard2 },
-        ]}>
-      <FontAwesome6 name={icon} size={9} color={active ? '#FFFFFF' : colors.txMuted}/>
-      <Text style={{ fontSize: 11, marginLeft: 5, color: active ? '#FFFFFF' : colors.txMuted, fontWeight: '600' }}>
-        {label}
-      </Text>
+        styles.chip,
+        { backgroundColor: active ? colors.bgChipActive : colors.bgCard2 },
+    ]}>
+        <FontAwesome6 name={icon} size={9} color={active ? '#FFFFFF' : colors.txMuted} />
+        <Text style={{ fontSize: 11, marginLeft: 5, color: active ? '#FFFFFF' : colors.txMuted, fontWeight: '600' }}>
+            {label}
+        </Text>
     </Pressable>);
 }
 function toFeedCard(item: ApiFeedPost): FeedPost {
@@ -139,21 +127,21 @@ function FeedGridItem({ post, index, onPress }: {
 }) {
     const { colors } = useTheme();
     return (<Pressable onPress={onPress} style={[
-            styles.gridItem,
-            {
-                width: TILE_SIZE - 1.34,
-                height: post.tall ? TILE_SIZE * 2 - 2 : TILE_SIZE - 2,
-                backgroundColor: gridBgColor(index, colors.bgCollage),
-            },
-        ]}>
-      {post.photoUrls?.[0] ? <ApiImage uri={post.photoUrls[0]} style={{ width: "100%", height: "100%" }}/> : <Text style={styles.gridEmoji}>{post.emoji}</Text>}
-      <View style={styles.gridTag}>
-        <Text style={styles.gridTagText} numberOfLines={1}>{post.place.split(',')[0]}</Text>
-      </View>
-      <View style={styles.gridLikes}>
-        <FontAwesome6 name="eye" size={9} color="#FFFFFF"/>
-        <Text style={styles.gridLikesText}>{post.views}</Text>
-      </View>
+        styles.gridItem,
+        {
+            width: TILE_SIZE - 1.34,
+            height: post.tall ? TILE_SIZE * 2 - 2 : TILE_SIZE - 2,
+            backgroundColor: gridBgColor(index, colors.bgCollage),
+        },
+    ]}>
+        {post.photoUrls?.[0] ? <ApiImage uri={post.photoUrls[0]} style={{ width: "100%", height: "100%" }} /> : <Text style={styles.gridEmoji}>{post.emoji}</Text>}
+        <View style={styles.gridTag}>
+            <Text style={styles.gridTagText} numberOfLines={1}>{post.place.split(',')[0]}</Text>
+        </View>
+        <View style={styles.gridLikes}>
+            <FontAwesome6 name="eye" size={9} color="#FFFFFF" />
+            <Text style={styles.gridLikesText}>{post.views}</Text>
+        </View>
     </Pressable>);
 }
 const styles = StyleSheet.create({

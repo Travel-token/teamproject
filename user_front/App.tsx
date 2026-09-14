@@ -6,6 +6,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/components/Toast';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import NotificationInboxHost from './src/components/NotificationInboxHost';
+import IntegrationRuntime from './src/components/IntegrationRuntime';
 
 function AppInner() {
   const { isDark } = useTheme();
@@ -13,6 +15,7 @@ function AppInner() {
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <RootNavigator />
+      <IntegrationRuntime /><NotificationInboxHost />
     </>
   );
 }

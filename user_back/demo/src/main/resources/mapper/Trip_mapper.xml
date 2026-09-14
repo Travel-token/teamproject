@@ -8,6 +8,20 @@
 ============================================================ -->
 <mapper namespace="com.example.back.repository.Trip_repository">
 
+    <resultMap id="tripResultMap" type="com.example.back.vo.Trip_vo">
+        <id column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="region" property="region" />
+        <result column="start_date" property="start_date" />
+        <result column="end_date" property="end_date" />
+        <result column="budget" property="budget" />
+        <result column="invite_code" property="invite_code" />
+        <result column="status" property="status" />
+        <result column="created_by" property="created_by" />
+        <result column="created_at" property="created_at" />
+        <result column="updated_at" property="updated_at" />
+    </resultMap>
+
     <!-- 여행 저장. status/created_by/invite_code는 Service가 채워서 넘김 -->
     <insert id="insertTrip" parameterType="com.example.back.vo.Trip_vo"
             useGeneratedKeys="true" keyProperty="id">
@@ -18,14 +32,14 @@
     </insert>
 
     <select id="findById" parameterType="long"
-            resultType="com.example.back.vo.Trip_vo">
+            resultMap="tripResultMap">
         SELECT id, name, region, start_date, end_date, budget,
                invite_code, status, created_by, created_at, updated_at
         FROM trips
         WHERE id = #{id}
     </select>
 
-    <select id="findAll" resultType="com.example.back.vo.Trip_vo">
+    <select id="findAll" resultMap="tripResultMap">
         SELECT id, name, region, start_date, end_date, budget,
                invite_code, status, created_by, created_at, updated_at
         FROM trips
@@ -33,7 +47,7 @@
     </select>
 
     <select id="findByStatus" parameterType="string"
-            resultType="com.example.back.vo.Trip_vo">
+            resultMap="tripResultMap">
         SELECT id, name, region, start_date, end_date, budget,
                invite_code, status, created_by, created_at, updated_at
         FROM trips
@@ -42,7 +56,7 @@
     </select>
 
     <!-- 진행중(ongoing) 여행 중 최신 1건: 앱 복원용 -->
-    <select id="findActive" resultType="com.example.back.vo.Trip_vo">
+    <select id="findActive" resultMap="tripResultMap">
         SELECT id, name, region, start_date, end_date, budget,
                invite_code, status, created_by, created_at, updated_at
         FROM trips
@@ -90,8 +104,18 @@
         VALUES (#{trip_id}, #{user_id}, #{display_name}, #{short_name}, #{color_code}, #{role})
     </insert>
 
-    <select id="findMembersByTripId" parameterType="long"
-            resultType="com.example.back.vo.TripMember_vo">
+    <resultMap id="tripMemberMap" type="com.example.back.vo.TripMember_vo">
+        <id column="id" property="id"/>
+        <result column="trip_id" property="trip_id"/>
+        <result column="user_id" property="user_id"/>
+        <result column="display_name" property="display_name"/>
+        <result column="short_name" property="short_name"/>
+        <result column="color_code" property="color_code"/>
+        <result column="role" property="role"/>
+        <result column="joined_at" property="joined_at"/>
+    </resultMap>
+
+    <select id="findMembersByTripId" parameterType="long" resultMap="tripMemberMap">
         SELECT id, trip_id, user_id, display_name, short_name, color_code, role, joined_at
         FROM trip_members
         WHERE trip_id = #{trip_id}

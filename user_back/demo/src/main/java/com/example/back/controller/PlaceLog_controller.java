@@ -55,7 +55,7 @@ public class PlaceLog_controller {
     @DeleteMapping("/{logId}")
     public ResponseEntity<?> deleteLog(@PathVariable("tripId") Long tripId,
             @PathVariable("logId") Long logId) {
-        if (!placeLogService.deleteLog(logId)) {
+        if (!placeLogService.deleteLog(tripId, logId)) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.noContent().build();

@@ -1,254 +1,67 @@
 import json
+import math
 import os
-
+import threading
+from collections import defaultdict
+from datetime import datetime, timezone
 
 class RecommendationService:
-
-    USER_FILE = "data/recommendation_users.json"
-
-    def __init__(self):
-
-        os.makedirs("data", exist_ok=True)
-
-        if not os.path.exists(self.USER_FILE):
-
-            with open(
-                self.USER_FILE,
-                "w",
-                encoding="utf-8"
-            ) as file:
-
-                json.dump(
-                    {},
-                    file,
-                    ensure_ascii=False,
-                    indent=2
-                )
-
-    # ========================================================
-    # 로그인 사용자 등록
-    # ========================================================
+    def __init__(self, data_dir=None):
+        self.data_dir = data_dir or os.getenv("RECOMMENDATION_DATA_DIR", "data")
+        self.user_file = os.path.join(self.data_dir, "recommendation_users.json")
+        self.event_file = os.path.join(self.data_dir, "recommendation_events.jsonl")
+        self.lock = threading.RLock()
+        os.makedirs(self.data_dir, exist_ok=True)
+        if not os.path.exists(self.user_file): self._save_users({})
 
     def register_user(self, user_id):
-
-        users = self._load_users()
-
-        user_id = str(user_id)
-
-        if user_id not in users:
-
-            users[user_id] = {
-                "userId": user_id
-            }
-
+        with self.lock:
+            users=self._load_users(); key=str(user_id)
+            users.setdefault(key,{"userId":key,"feedWeights":{},"categoryWeights":{},"regionWeights":{}})
             self._save_users(users)
 
-            print(
-                f"[USER CREATED] userId={user_id}"
-            )
-
-        else:
-
-            print(
-                f"[USER EXISTS] userId={user_id}"
-            )
-
-    # ========================================================
-    # 행동 이벤트 처리
-    # ========================================================
-
     def process_event(self, event):
+        user_id=event.get("userId"); kind=event.get("event")
+        if user_id is None or kind not in {"FEED_VIEW","FEED_CLICK","FEED_LIKE","FEED_CREATE","FEED_UPDATE"}: return False
+        weight={"FEED_VIEW":1,"FEED_CLICK":2,"FEED_LIKE":4,"FEED_CREATE":3,"FEED_UPDATE":1}[kind]
+        clean={"timestamp":event.get("timestamp") or datetime.now(timezone.utc).isoformat(),"userId":str(user_id),"event":kind,
+               "feedId":event.get("feedId"),"category":event.get("category"),"region":event.get("region")}
+        with self.lock:
+            self.register_user(user_id); users=self._load_users(); profile=users[str(user_id)]
+            self._add(profile["feedWeights"],clean["feedId"],weight)
+            self._add(profile["categoryWeights"],clean["category"],weight)
+            self._add(profile["regionWeights"],clean["region"],weight)
+            self._save_users(users)
+            with open(self.event_file,"a",encoding="utf-8") as f: f.write(json.dumps(clean,ensure_ascii=False)+"\n")
+        return True
 
-        user_id = event.get("userId")
-        event_type = event.get("event")
+    def recommend(self,user_id,candidates,limit=10,current_region=None):
+        with self.lock: profile=self._load_users().get(str(user_id),{})
+        feed=profile.get("feedWeights",{}); categories=profile.get("categoryWeights",{}); regions=profile.get("regionWeights",{})
+        scored=[]
+        for item in candidates:
+            fid=str(item.get("feedId","")); popularity=max(0,float(item.get("popularity",0) or 0))
+            score=math.log1p(popularity)*0.15 + float(feed.get(fid,0))*0.1
+            score+=float(categories.get(str(item.get("category","")),0))*0.35
+            score+=float(regions.get(str(item.get("region","")),0))*0.25
+            if current_region and str(item.get("region","")).strip() == str(current_region).strip(): score+=0.30
+            scored.append({"feedId":item.get("feedId"),"score":round(score,6)})
+        return sorted(scored,key=lambda x:(-x["score"],str(x["feedId"])))[:max(1,min(int(limit),50))]
 
-        if user_id is None:
-            return
+    def caption(self,trip_name,region,places):
+        names=[str(p).strip() for p in (places or []) if str(p).strip()][:3]
+        title=(trip_name or region or "우리 여행").strip(); text=f"{title} 정산까지 완료!"
+        if names: text+=f" {', '.join(names)}에서 함께한 순간을 기록해요."
+        tags=[(region or "우리").replace(" ","")+"여행"]+([names[0].replace(" ","")] if names else [])+["트래블토큰"]
+        return text+" "+" ".join("#"+tag for tag in tags)
 
-        print(
-            f"[EVENT] "
-            f"userId={user_id}, "
-            f"event={event_type}"
-        )
-
-        if event_type == "FEED_VIEW":
-
-            self.process_feed_view(event)
-
-        elif event_type == "FEED_LIKE":
-
-            self.process_feed_like(event)
-
-        elif event_type == "FEED_CLICK":
-
-            self.process_feed_click(event)
-
-        elif event_type == "FEED_CREATE":
-
-            self.process_feed_create(event)
-
-        elif event_type == "FEED_UPDATE":
-
-            self.process_feed_update(event)
-
-        else:
-
-            print(
-                f"[UNKNOWN EVENT] "
-                f"userId={user_id}, "
-                f"event={event_type}"
-            )
-
-    # ========================================================
-    # 피드 조회
-    # ========================================================
-
-    def process_feed_view(self, event):
-
-        user_id = event.get("userId")
-        feed_id = event.get("feedId")
-
-        print(
-            f"[FEED VIEW] "
-            f"userId={user_id}, "
-            f"feedId={feed_id}"
-        )
-
-        # TODO
-        # 사용자 행동 데이터 저장
-        # 추천 Feature 업데이트
-
-    # ========================================================
-    # 피드 좋아요
-    # ========================================================
-
-    def process_feed_like(self, event):
-
-        user_id = event.get("userId")
-        feed_id = event.get("feedId")
-
-        print(
-            f"[FEED LIKE] "
-            f"userId={user_id}, "
-            f"feedId={feed_id}"
-        )
-
-        # TODO
-        # 좋아요 기반 Feature 업데이트
-
-    # ========================================================
-    # 피드 클릭
-    # ========================================================
-
-    def process_feed_click(self, event):
-
-        user_id = event.get("userId")
-        feed_id = event.get("feedId")
-
-        print(
-            f"[FEED CLICK] "
-            f"userId={user_id}, "
-            f"feedId={feed_id}"
-        )
-
-        # TODO
-        # 클릭 기반 Feature 업데이트
-
-    # ========================================================
-    # 피드 생성
-    # ========================================================
-
-    def process_feed_create(self, event):
-
-        user_id = event.get("userId")
-        feed_id = event.get("feedId")
-
-        print(
-            f"[FEED CREATE] "
-            f"userId={user_id}, "
-            f"feedId={feed_id}"
-        )
-
-        # TODO
-        # 사용자가 어떤 유형의 피드를 생성했는지
-        # 추천 Feature에 반영
-
-    # ========================================================
-    # 피드 수정
-    # ========================================================
-
-    def process_feed_update(self, event):
-
-        user_id = event.get("userId")
-        feed_id = event.get("feedId")
-
-        print(
-            f"[FEED UPDATE] "
-            f"userId={user_id}, "
-            f"feedId={feed_id}"
-        )
-
-        # TODO
-        # 피드 수정 자체는 추천 행동 점수에
-        # 직접적으로 반영하지 않을 수도 있음
-
-    # ========================================================
-    # 추천
-    # ========================================================
-
-    def recommend(self, user_id):
-
-        # ====================================================
-        # TODO
-        # 여기에서 실제 추천 알고리즘 실행
-        #
-        # result = recommendation_algorithm(user_id)
-        # ====================================================
-
-        return [
-            {
-                "feedId": 381,
-                "score": 0.95
-            },
-            {
-                "feedId": 102,
-                "score": 0.91
-            },
-            {
-                "feedId": 205,
-                "score": 0.87
-            }
-        ]
-
-    # ========================================================
-    # 사용자 데이터 읽기
-    # ========================================================
-
+    def _add(self,bucket,key,weight):
+        if key is not None and str(key): bucket[str(key)]=float(bucket.get(str(key),0))+weight
     def _load_users(self):
-
-        with open(
-            self.USER_FILE,
-            "r",
-            encoding="utf-8"
-        ) as file:
-
-            return json.load(file)
-
-    # ========================================================
-    # 사용자 데이터 저장
-    # ========================================================
-
-    def _save_users(self, users):
-
-        with open(
-            self.USER_FILE,
-            "w",
-            encoding="utf-8"
-        ) as file:
-
-            json.dump(
-                users,
-                file,
-                ensure_ascii=False,
-                indent=2
-            )
+        try:
+            with open(self.user_file,"r",encoding="utf-8") as f: return json.load(f)
+        except (OSError,json.JSONDecodeError): return {}
+    def _save_users(self,users):
+        tmp=self.user_file+".tmp"
+        with open(tmp,"w",encoding="utf-8") as f: json.dump(users,f,ensure_ascii=False,indent=2)
+        os.replace(tmp,self.user_file)

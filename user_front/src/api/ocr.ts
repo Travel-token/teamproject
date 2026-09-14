@@ -1,15 +1,11 @@
-import axios from 'axios';
+import type { ImagePickerAsset } from 'expo-image-picker';
+import { Platform } from 'react-native';
+import { api } from './client';
 
 // ─────────────────────────────────────────────
-// OCR 서비스 주소
-// 시연 단계에서는 Spring을 거치지 않고 Python OCR 서비스를 직접 호출한다.
-// 실기기(폰)로 테스트할 때는 localhost가 아니라 PC의 IP를 써야 한다.
-//   1) PC에서 ipconfig 실행 -> IPv4 주소 확인
-//   2) 폰과 PC가 같은 와이파이인지 확인
-//   3) 아래 IP를 그 주소로 변경
+// Android는 OCR 서버에 직접 연결하지 않는다.
+// 인증된 Spring API가 파일 검증 후 PC 내부의 OCR 서버로 전달한다.
 // ─────────────────────────────────────────────
-const OCR_BASE_URL = 'http://172.21.85.40:8001';
-
 export interface OcrResult {
   name: string | null;
   amount: number | null;
@@ -25,36 +21,33 @@ export interface OcrResult {
 
 /**
  * 영수증 이미지를 OCR 서비스에 보내 지출 정보를 추출한다.
- * @param imageUri expo-image-picker가 돌려준 로컬 파일 URI
+ * @param asset expo-image-picker가 돌려준 사진 (웹에서는 File 포함)
  */
-export async function extractReceipt(imageUri: string): Promise<OcrResult> {
+export async function extractReceipt(tripId: string, asset: ImagePickerAsset, signal?: AbortSignal): Promise<OcrResult> {
+  if (!tripId) throw new Error('여행을 선택한 후 영수증을 인식해 주세요.');
   const formData = new FormData();
 
-  const fileName = imageUri.split('/').pop() ?? 'receipt.jpg';
+  const fileName = asset.fileName || asset.uri.split('/').pop()?.split('?')[0] || 'receipt.jpg';
   const ext = fileName.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+  const mimeType = asset.mimeType || (ext === 'png' ? 'image/png' : 'image/jpeg');
 
-  // React Native의 FormData는 { uri, name, type } 형태를 요구한다 (웹과 다름)
-  formData.append('image', {
-    uri: imageUri,
-    name: fileName,
-    type: mimeType,
-  } as any);
+  if (Platform.OS === 'web') {
+    const webFile = (asset as ImagePickerAsset & { file?: File }).file;
+    if (webFile) formData.append('file', webFile, webFile.name);
+    else {
+      const response = await fetch(asset.uri);
+      if (!response.ok) throw new Error('선택한 사진을 읽지 못했어요. 다시 선택해 주세요.');
+      formData.append('file', await response.blob(), fileName);
+    }
+  } else {
+    formData.append('file', { uri: asset.uri, name: fileName, type: mimeType } as unknown as Blob);
+  }
 
-  const res = await axios.post<OcrResult>(`${OCR_BASE_URL}/ocr`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000, // CPU 추론이라 느릴 수 있음. 첫 요청은 모델 로딩까지 포함
+  const res = await api.post<OcrResult>(`/api/trips/${encodeURIComponent(tripId)}/receipts/parse`, formData, {
+    signal,
+    timeout: 300000, // Windows CPU OCR은 고해상도 영수증에서 3분을 넘길 수 있음
   });
 
   return res.data;
 }
 
-/** OCR 서비스가 살아있는지 확인 (선택) */
-export async function checkOcrHealth(): Promise<boolean> {
-  try {
-    await axios.get(`${OCR_BASE_URL}/health`, { timeout: 3000 });
-    return true;
-  } catch {
-    return false;
-  }
-}

@@ -26,7 +26,7 @@ from datetime import datetime
 DET_DIR = "./inference/ko_receipt_det"
 REC_DIR = "./inference/ko_receipt_rec"
 DICT_PATH = "./data/korean_receipt_dict.txt"
-MAX_SIDE = 1600  # CPU 추론 속도를 위해 리사이즈할 최대 변 길이(px). 영수증 텍스트엔 충분함
+MAX_SIDE = 960  # 모바일 영수증의 판독력을 유지하면서 Windows CPU 추론량을 줄인다.
 
 # 파인튜닝 결과물이 아직 없으면(서버 학습 전) PaddleOCR 내장
 # 한국어 사전학습 모델을 자동 다운로드해서 씁니다. (5090 없이도 바로 테스트 가능)
@@ -124,7 +124,7 @@ def _get_ocr_engine(use_gpu: bool):
         return PaddleOCR(
             text_detection_model_dir=DET_DIR,
             text_recognition_model_dir=REC_DIR,
-            use_textline_orientation=True,
+            use_textline_orientation=False,
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
             lang="korean",
@@ -132,15 +132,14 @@ def _get_ocr_engine(use_gpu: bool):
             enable_mkldnn=False,  # PaddlePaddle 3.3.x Windows CPU 버그 회피
         )
 
-    # lang="korean" 만 지정하면 첫 실행 시 PP-OCRv5(또는 v4) 한국어
-    # 사전학습 det/rec 가중치를 ~/.paddlex 에 자동 다운로드합니다.
+    # CPU 자가 서버에서는 기본 server 검출 모델이 영수증 한 장에도 수십 초가
+    # 걸리므로 mobile 검출 모델을 명시한다. 한국어 인식 모델은 그대로 유지한다.
     print("[info] 파인튜닝 모델 없음 -> PaddleOCR 내장 한국어 사전학습 모델 사용 "
           "(첫 실행 시 자동 다운로드, 수 분 소요)")
-    # 검출 모델을 따로 지정하지 않음: lang="korean"이 자동으로 고르는
-    # det/rec 짝이 서로 맞춰 학습된 조합이라, 임의로 바꾸면 crop 좌표가
-    # 어긋나서 엉뚱한 글자가 나옴(경험함). 속도는 이미지 리사이즈로 확보.
     return PaddleOCR(
-        use_textline_orientation=True,
+        text_detection_model_name="PP-OCRv5_mobile_det",
+        text_recognition_model_name="korean_PP-OCRv5_mobile_rec",
+        use_textline_orientation=False,
         use_doc_orientation_classify=False,
         use_doc_unwarping=False,
         lang="korean",

@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AuthServiceImpl implements AuthService {
 
         private final UserService userService;
-        private final JwtProvider jwtProvider;
+        private final SessionService sessions;
         private final RecommendationService recommendationService;
 
         @Override
@@ -53,13 +53,9 @@ public class AuthServiceImpl implements AuthService {
                 }
 
                 if (user.getStatus() != com.example.back.vo.enums.UserStatus.ACTIVE) {
-                    throw new IllegalArgumentException("탈퇴하거나 비활성화된 계정입니다.");
+                        throw new IllegalArgumentException("탈퇴하거나 비활성화된 계정입니다.");
                 }
                 Long userId = user.getId();
-
-                String token = jwtProvider.generateToken(
-                                user.getId(),
-                                user.getEmail());
 
                 // flask 서버에 로그인한 유저 정보 전달
                 try {
@@ -69,11 +65,7 @@ public class AuthServiceImpl implements AuthService {
 
                 }
 
-                return LoginResponseDto.builder()
-                                .userId(user.getId())
-                                .name(user.getName())
-                                .accessToken(token)
-                                .build();
+                return sessions.issue(user.getId());
 
         }
 

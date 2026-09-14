@@ -78,6 +78,7 @@ function toDays(start: string | null, end: string | null): number {
  * → 채우지 않으면 화면에 undefined가 그대로 새어나간다.
  */
 export function toTrip(s: ServerTrip, members: Member[] = []): Trip {
+    const safeMembers = Array.isArray(members) ? members.filter((member) => member && member.id) : [];
     return {
         id: String(s.tripId),
         name: s.name,
@@ -89,13 +90,16 @@ export function toTrip(s: ServerTrip, members: Member[] = []): Trip {
         days: toDays(s.startDate, s.endDate),
         myExpense: Number(s.myExpense ?? 0),
         totalExpense: Number(s.totalExpense ?? 0),
-        collage: s.photoUrls ?? [],
-        members,
+        collage: Array.isArray(s.photoUrls) ? s.photoUrls.filter(Boolean) : [],
+        members: safeMembers,
     };
 }
 /** 서버 멤버 → 화면용 Member */
 export function toMember(m: ServerMember): Member {
-    return { id: String(m.memberId), name: m.displayName };
+    return {
+        id: String(m.memberId),
+        name: (m.displayName || m.shortName || '멤버').trim() || '멤버',
+    };
 }
 // ============================================================
 // API 호출 함수들
@@ -236,20 +240,28 @@ export async function fetchPlaceItems(tripId: string): Promise<PlaceItem[]> {
 }
 /** POST /trips/{tripId}/places - 동선 추가 */
 export async function addPlaceLog(tripId: string, payload: {
+    externalApiId?: string;
     name: string;
     memo?: string;
     visitedAt?: string;
     placeId?: number;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
 }): Promise<ServerPlaceLog> {
-    const res = await api.post<ServerPlaceLog>(`/api/trips/${tripId}/places`, payload);
+    const res = await api.post<ServerPlaceLog>(`/api/trips/${tripId}/places`, payload, { timeout: 25000 });
     return res.data;
 }
 /** 동선 추가 후 화면용으로 변환해 반환 */
 export async function addPlaceItem(tripId: string, payload: {
+    externalApiId?: string;
     name: string;
     memo?: string;
     visitedAt?: string;
     placeId?: number;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
 }): Promise<PlaceItem> {
     return toPlaceItem(await addPlaceLog(tripId, payload));
 }

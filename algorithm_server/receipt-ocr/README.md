@@ -22,7 +22,7 @@ docker compose logs -f        # 로그 확인
 또는 compose 없이:
 ```bash
 docker build -t receipt-ocr .
-docker run -d -p 8001:8001 -v paddle-cache:/app/.paddlex receipt-ocr
+docker run -d -p 127.0.0.1:8001:8001 -v paddle-cache:/app/.paddlex receipt-ocr
 ```
 
 > **첫 실행 시 주의**: 컨테이너가 뜬 뒤 OCR 모델(수십 MB)을 자동 다운로드합니다.
@@ -44,7 +44,7 @@ venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 pip install paddlepaddle        # CPU 버전 (GPU면 paddlepaddle-gpu)
 
-uvicorn service:app --host 0.0.0.0 --port 8001
+uvicorn service:app --host 127.0.0.1 --port 8001
 ```
 
 > Python 3.11 권장 (3.13+ 에서는 paddlepaddle 미지원)

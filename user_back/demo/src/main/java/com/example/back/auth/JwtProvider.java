@@ -1,88 +1,45 @@
 package com.example.back.auth;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-
-import javax.crypto.SecretKey;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
 
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class JwtProvider {
+    private final SecretKey key;
 
-    @Value("${jwt.secret-key}")
-    private String secretKey;
-
-    @Value("${jwt.expiration-time}")
-    private long expirationTime;
-
-    // 토큰 생성
-    public String generateToken(Long userId, String email) {
-        SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
-
-        Date now = new Date();
-
-        Date expireDate = new Date(now.getTime() + expirationTime);
-
-        return Jwts.builder()
-                .subject(userId.toString())
-                .claim("email", email)
-                .issuedAt(now)
-                .expiration(expireDate)
-                .signWith(key)
-                .compact();
+    public JwtProvider(@Value("${jwt.secret-key}") String secret) {
+        key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    // 토큰 검증
+    public String generateToken(Long uid, String email, String sid, long expiresAt) {
+        return Jwts.builder().subject(uid.toString()).claim("email", email).claim("sid", sid)
+                .issuedAt(new Date()).expiration(new Date(expiresAt)).signWith(key).compact();
+    }
+
+    public Claims getClaims(String token) {
+        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+    }
+
     public boolean validateToken(String token) {
-
         try {
-
             getClaims(token);
             return true;
-
-        } catch (Exception e) {
-            log.error("토큰 검증 실패: {}", e.getMessage());
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
             return false;
-
         }
-
     }
 
-    // Clamis 추출
-    public Claims getClaims(String token) {
-
-        SecretKey key = Keys.hmacShaKeyFor(
-                secretKey.getBytes(StandardCharsets.UTF_8));
-
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-    }
-
-    // userid 추출
     public Long getUserId(String token) {
-
-        return Long.valueOf(
-                getClaims(token).getSubject());
+        return Long.valueOf(getClaims(token).getSubject());
     }
 
-    // email 추출
     public String getEmail(String token) {
-
         return getClaims(token).get("email", String.class);
     }
-
 }
